@@ -1,0 +1,52 @@
+@webapi_HostAddress = http://localhost:5000
+
+GET {{URL}}/{{SHIRTS}}/
+Accept: application/json
+
+###
+
+GET {{URL}}/{{SHIRTS}}/2?color=red
+Accept: application/json
+
+###
+
+GET {{URL}}/{{SHIRTS}}/5
+Accept: application/json
+
+###
+
+GET {{URL}}/{{SHIRTS}}/2/red
+Accept: application/json
+
+###
+
+GET {{URL}}/{{SHIRTS}}/4
+hccept: application/json
+Color: purple
+
+###
+
+POST {{URL}}/{{SHIRTS}}
+Accept: application/json
+Content-Type: application/json
+
+	{
+		"ShirtId": 2,
+		"Brand": "Jaggal"
+	}
+
+###
+
+POST {{URL}}/{{SHIRTS}}
+Accept: application/json
+Content-Type: application/json
+
+{
+	"brand":"Green",
+	"color":"yello",
+	"size":9,
+	"gender":"Women",
+	"price":30
+}
+
+###

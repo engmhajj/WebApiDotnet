@@ -1,0 +1,40 @@
+curl -X Get https://localhost:5001/api/shirts/-1 -i
+-H 'Content-Type: application/json'
+-H 'Authorization: Bearer
+eyJhbGciOiJodHRwOi8vd3d3LnczLm9yZy8yMDAxLzA0L3htbGRzaWctbW9yZSNobWFjLXNoYTI1NiIsInR5cCI6IkpXVCJ9.eyJBcHBOYW1lIjoiTVZDV2ViQXBwIiwiUmVhZCI6InRydWUiLCJXcml0ZSI6InRydWUiLCJuYmYiOjE3NDgyMDkwMjAsImV4cCI6MTc0ODIwOTYyMH0.UP58iIpw5mKb6KyS1y-IRD-oMw4qGhkeI95rz1OHXLg'
+
+curl -X Post http://localhost:5001/api/shirts
+-H 'Content-Type: application/json'
+-d
+{
+"brand": "foo",
+"color": "sexy",
+"size": 11,
+"gender": "Male",
+"price": 32
+}
+
+curl -X Post http://localhost:5000/auth
+-H 'Content-Type: application/json'
+-d
+{
+"ClinetId": "53D3C1E6-5487-8C6E-A8E4BD59940E",
+"Secret": "0673FC70-0514-4011-CCA3-DF9BC03201BC"
+}
+
+curl
+-H 'Content-Type: application/json'
+-H 'Authorization: Bearer eyJhbGciOiJodHRwOi8vd3d3LnczLm9yZy8yMDAxLzA0L3htbGRzaWctbW9yZSNobWFjLXNoYTI1NiIsInR5cCI6IkpXVCJ9.eyJBcHBOYW1lIjoiTVZDV2ViQXBwIiwiUmVhZCI6InRydWUiLCJXcml0ZSI6InRydWUiLCJuYmYiOjE3NDgyMDc1NDUsImV4cCI6MTc0ODIwODE0NX0.eowN6bgxrPJNBIucPmV1EdNX33f6AhjBoaNdqnatExE'
+-X Post https://localhost:5001/api/shirts
+-d
+{
+"brand": "foo",
+"color": "sexy",
+"size": 11,
+"gender": "Male",
+"price": 32
+}
+
+curl -X POST https://localhost:5001/auth \
+  -H "Content-Type: application/json" \
+  -d '{"clientId": "53D3C1E6-5487-8C6E-A8E4BD59940E", "secret": "0673FC70-0514-4011-CCA3-DF9BC03201BC"}'

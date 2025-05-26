@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>webapi</name>
+    </assembly>
+    <members>
+        <member name="M:webapi.Authority.AppRepository.GetApplicationByClientId(System.String)">
+            <summary>
+            Returns an Application object matching the provided ClientId.
+            </summary>
+            <param name="clientId">The client ID to match.</param>
+            <returns>An Application instance if found; otherwise, null.</returns>
+        </member>
+        <member name="M:webapi.Authority.AppRepository.GetAllApplications">
+            <summary>
+            Optionally expose all applications for diagnostics.
+            </summary>
+        </member>
+        <member name="M:webapi.Controllers.AuthorityController.Authenticate(webapi.Authority.AppCredential)">
+            <summary>
+            Authenticates an application and returns a JWT token if successful.
+            </summary>
+            <param name="credential">The client credentials.</param>
+            <returns>JWT token and expiration or an error response.</returns>
+        </member>
+        <member name="T:webapi.Controllers.AuthResponse">
+            <summary>
+            Response object for successful authentication.
+            </summary>
+        </member>
+        <member name="P:webapi.Controllers.AuthResponse.AccessToken">
+            <summary>
+            JWT access token.
+            </summary>
+        </member>
+        <member name="P:webapi.Controllers.AuthResponse.ExpiresAt">
+            <summary>
+            Token expiration date and time (UTC).
+            </summary>
+        </member>
+        <member name="T:webapi.Migrations.init">
+            <inheritdoc />
+        </member>
+        <member name="M:webapi.Migrations.init.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:webapi.Migrations.init.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:webapi.Migrations.init.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+    </members>
+</doc>
