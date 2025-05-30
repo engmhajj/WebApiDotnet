@@ -122,53 +122,6 @@ public class WebApiExecuter : IWebApiExecuter
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
     }
 
-    private async Task<JwtToken?> GetOrRefreshToken()
-    {
-        var session = _httpContextAccessor.HttpContext?.Session;
-
-        if (session == null) return null;
-
-        string? tokenJson = session.GetString(Constants.SessionTokenKey);
-        JwtToken? token = DeserializeToken(tokenJson);
-
-        if (IsTokenValid(token)) return token;
-
-        await _authLock.WaitAsync().ConfigureAwait(false);
-        try
-        {
-            tokenJson = session.GetString(Constants.SessionTokenKey);
-            token = DeserializeToken(tokenJson);
-
-            if (IsTokenValid(token)) return token;
-
-            var clientId = _configuration.GetValue<string>("ClientId");
-            var secret = _configuration.GetValue<string>("Secret");
-
-            if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(secret))
-                throw new InvalidOperationException("Missing client credentials.");
-
-            var authClient = _httpClientFactory.CreateClient(Constants.AuthorityApiName);
-            var response = await authClient.PostAsJsonAsync("auth", new AppCredential { ClientId = clientId, Secret = secret }).ConfigureAwait(false);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var error = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                throw new WebApiException($"Authentication failed: {response.StatusCode} - {error}");
-            }
-
-            var responseText = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-            token = JsonConvert.DeserializeObject<JwtToken>(responseText)
-                    ?? throw new WebApiException("Failed to deserialize token.");
-
-            session.SetString(Constants.SessionTokenKey, responseText);
-            return token;
-        }
-        finally
-        {
-            _authLock.Release();
-        }
-    }
-
     private JwtToken? DeserializeToken(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return null;
@@ -186,6 +139,98 @@ public class WebApiExecuter : IWebApiExecuter
 
     private bool IsTokenValid(JwtToken? token)
     {
-        return token != null && token.ExpiresAt > DateTime.UtcNow;
+        return token != null && token.AccessTokenExpiresAt > DateTime.UtcNow;
+    }
+
+    private async Task<JwtToken?> GetOrRefreshToken()
+    {
+        var session = _httpContextAccessor.HttpContext?.Session;
+        if (session == null) return null;
+
+        string? tokenJson = session.GetString(Constants.SessionTokenKey);
+        JwtToken? token = DeserializeToken(tokenJson);
+
+        if (IsTokenValid(token))
+            return token;
+
+        await _authLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            tokenJson = session.GetString(Constants.SessionTokenKey);
+            token = DeserializeToken(tokenJson);
+
+            if (IsTokenValid(token))
+                return token;
+
+            // Use refresh token if valid
+            if (token != null
+                && !string.IsNullOrEmpty(token.RefreshToken)
+                && token.RefreshTokenExpiresAt > DateTime.UtcNow)
+            {
+                var refreshClient = _httpClientFactory.CreateClient(Constants.AuthorityApiName);
+
+                var refreshPayload = new
+                {
+                    clientId = _configuration["ClientId"],
+                    refreshToken = token.RefreshToken
+                };
+
+                var refreshResponse = await refreshClient.PostAsJsonAsync("auth/refresh", refreshPayload).ConfigureAwait(false);
+
+                if (!refreshResponse.IsSuccessStatusCode)
+                {
+                    var error = await refreshResponse.Content.ReadAsStringAsync();
+                    throw new WebApiException($"Refresh failed: {refreshResponse.StatusCode} - {error}");
+                }
+
+                var refreshResponseText = await refreshResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+                var refreshed = JsonConvert.DeserializeObject<JwtToken>(refreshResponseText);
+
+                if (refreshed == null)
+                    throw new WebApiException("Failed to parse refresh response");
+
+                refreshed.IssuedAt = DateTime.UtcNow;
+                session.SetString(Constants.SessionTokenKey, JsonConvert.SerializeObject(refreshed));
+                return refreshed;
+            }
+
+            // Refresh token expired or not present — full client credentials flow
+            var clientId = _configuration["ClientId"];
+            var secret = _configuration["Secret"];
+
+            if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(secret))
+                throw new InvalidOperationException("Missing client credentials.");
+
+            var authClient = _httpClientFactory.CreateClient(Constants.AuthorityApiName);
+
+            var authResponse = await authClient.PostAsJsonAsync("auth", new AppCredential
+            {
+                ClientId = clientId,
+                Secret = secret
+            }).ConfigureAwait(false);
+
+            if (!authResponse.IsSuccessStatusCode)
+            {
+                var error = await authResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+                throw new WebApiException($"Authentication failed: {authResponse.StatusCode} - {error}");
+            }
+
+            var authResponseText = await authResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+            var newToken = JsonConvert.DeserializeObject<JwtToken>(authResponseText);
+
+            if (newToken == null)
+                throw new WebApiException("Failed to deserialize new token");
+
+            newToken.IssuedAt = DateTime.UtcNow;
+            session.SetString(Constants.SessionTokenKey, JsonConvert.SerializeObject(newToken));
+
+            return newToken;
+        }
+        finally
+        {
+            _authLock.Release();
+        }
     }
 }

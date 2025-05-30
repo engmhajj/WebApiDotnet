@@ -10,7 +10,7 @@ namespace webapi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[JwtTokenAuthFilter]
+[TypeFilter(typeof(JwtTokenAuthFilter))]
 public class ShirtsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;

@@ -1,6 +1,7 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using webapi.Models;
 
-namespace webapi.Models.Validations
+namespace webapi.Attributes.Validations
 {
     public class Shirt_EnsureCorrectSizingAttribute : ValidationAttribute
     {

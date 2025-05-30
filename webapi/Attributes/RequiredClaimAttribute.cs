@@ -13,6 +13,5 @@
             ClaimType = claimType;
             ClaimValue = claimValue;
         }
-
     }
 }

@@ -1,100 +1,123 @@
-# Top-most EditorConfig file
+
+# top-most EditorConfig file
 root = true
 
-# Applies to all C# files
-[*.cs]
-
-###############
-# Formatting  #
-###############
+[*]
+charset = utf-8
 indent_style = space
 indent_size = 4
-insert_final_newline = true
-charset = utf-8-bom
 end_of_line = crlf
+insert_final_newline = true
 trim_trailing_whitespace = true
 
-###############
-# Language    #
-###############
-dotnet_language_version = latest
+[*.cs]
 
-################################
-# .NET Code Style Preferences  #
-################################
+charset = utf-8-bom
+indent_style = space
+indent_size = 4
+tab_width = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
 
-# Use var for built-in types
-dotnet_style_predefined_type_for_locals_parameters_members = true:suggestion
-dotnet_style_predefined_type_for_member_access = true:suggestion
+# C# formatting and code style
+dotnet_style_indent_switch_labels = true:suggestion
 
-# Use 'var' or explicit type
-csharp_style_var_for_built_in_types = true:suggestion
 csharp_style_var_when_type_is_apparent = true:suggestion
 csharp_style_var_elsewhere = false:suggestion
 
-# Use expression-bodied members
 csharp_style_expression_bodied_methods = true:suggestion
 csharp_style_expression_bodied_properties = true:suggestion
-csharp_style_expression_bodied_operators = true:suggestion
-csharp_style_expression_bodied_constructors = false:suggestion
+csharp_style_expression_bodied_constructors = true:suggestion
 
-# Prefer pattern matching
-csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
-csharp_style_pattern_matching_over_as_with_null_check = true:suggestion
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+dotnet_style_qualification_for_method = false:suggestion
+dotnet_style_qualification_for_event = false:suggestion
 
-# Prefer conditional delegate call
-dotnet_style_conditional_delegate_call = true:suggestion
+dotnet_style_require_accessibility_modifiers = always:warning
 
-# Null checks
-csharp_style_throw_expression = true:suggestion
-csharp_style_conditional_delegate_call = true:suggestion
-csharp_style_null_propagation = true:suggestion
-csharp_style_prefer_null_check_over_type_check = true:suggestion
+csharp_new_line_before_open_brace = all
 
-##############################
-# Naming conventions         #
-##############################
+file_header_template = "Licensed under the MIT License."
 
-# Naming rules format: dotnet_naming_rule.<name>.<option>
-# Define symbols, styles, and rules
+# Naming conventions
 
-# Example: Interface should start with I
-dotnet_naming_rule.interfaces_should_start_with_i.symbols = interfaces
-dotnet_naming_rule.interfaces_should_start_with_i.style = prefix_i
-dotnet_naming_rule.interfaces_should_start_with_i.severity = suggestion
+dotnet_naming_rule.types_should_be_pascal_case.severity = warning
+dotnet_naming_rule.types_should_be_pascal_case.symbols = all_types
+dotnet_naming_rule.types_should_be_pascal_case.style = pascal_case_style
 
-dotnet_naming_symbols.interfaces.applicable_kinds = interface
-dotnet_naming_symbols.interfaces.applicable_accessibilities = *
-dotnet_naming_symbols.interfaces.required_modifiers = *
+dotnet_naming_symbols.all_types.applicable_kinds = class, struct, interface, enum, delegate
+dotnet_naming_symbols.all_types.applicable_accessibilities = *
+dotnet_naming_symbols.all_types.required_modifiers = *
 
-dotnet_naming_style.prefix_i.required_prefix = I
-dotnet_naming_style.prefix_i.capitalization = pascal_case
+dotnet_naming_style.pascal_case_style.capitalization = pascal_case
 
-#####################################
-# Analyzer severity (from rulesets) #
-#####################################
+dotnet_naming_rule.private_fields_should_be_camel_case.severity = warning
+dotnet_naming_rule.private_fields_should_be_camel_case.symbols = private_fields
+dotnet_naming_rule.private_fields_should_be_camel_case.style = camel_case_underscore_style
 
-# Treat warnings as errors
-dotnet_analyzer_diagnostic.severity = warning
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_symbols.private_fields.required_modifiers = *
 
-# Optional: Promote some to errors
-# dotnet_diagnostic.CA1822.severity = error
-# dotnet_diagnostic.CA1305.severity = warning
+dotnet_naming_style.camel_case_underscore_style.capitalization = camel_case
+dotnet_naming_style.camel_case_underscore_style.required_prefix = _
 
-###############################
-# File ordering and spacing   #
-###############################
+dotnet_naming_rule.local_variables_should_be_camel_case.severity = suggestion
+dotnet_naming_rule.local_variables_should_be_camel_case.symbols = local_variables
+dotnet_naming_rule.local_variables_should_be_camel_case.style = camel_case_style
 
-dotnet_sort_system_directives_first = true
-file_header_template = unset
-csharp_using_directive_placement = outside_namespace:suggestion
+dotnet_naming_symbols.local_variables.applicable_kinds = local
+dotnet_naming_symbols.local_variables.applicable_accessibilities = *
+dotnet_naming_symbols.local_variables.required_modifiers = *
 
-####################
-# Misc preferences #
-####################
+dotnet_naming_style.camel_case_style.capitalization = camel_case
 
-# Prefer explicit access modifiers
-dotnet_style_require_accessibility_modifiers = always:suggestion
+dotnet_naming_rule.constants_should_be_pascal_case.severity = warning
+dotnet_naming_rule.constants_should_be_pascal_case.symbols = constants
+dotnet_naming_rule.constants_should_be_pascal_case.style = pascal_case_style
 
-# Prefer UTF-8 encoding
-dotnet_encoding_utf8 = true
+dotnet_naming_symbols.constants.applicable_kinds = field
+dotnet_naming_symbols.constants.applicable_accessibilities = *
+dotnet_naming_symbols.constants.required_modifiers = const
+
+# Roslyn analyzer rules integration (examples)
+
+# CA1707: Identifiers should not contain underscores (disable because we allow _ prefix for private fields)
+dotnet_diagnostic.CA1707.severity = none
+
+# CA1822: Mark members as static when possible (suggestion)
+dotnet_diagnostic.CA1822.severity = suggestion
+
+# IDE0044: Make field readonly
+dotnet_diagnostic.IDE0044.severity = suggestion
+
+# IDE0051: Remove unused private members
+dotnet_diagnostic.IDE0051.severity = warning
+
+# IDE0060: Remove unused parameter
+dotnet_diagnostic.IDE0060.severity = warning
+
+# IDE1006: Naming rule violations (handled by our naming rules)
+dotnet_diagnostic.IDE1006.severity = warning
+
+# IDE0017: Simplify object initialization
+dotnet_diagnostic.IDE0017.severity = suggestion
+
+# IDE0059: Unnecessary assignment of a value
+dotnet_diagnostic.IDE0059.severity = warning
+
+# IDE0058: Expression value is never used
+dotnet_diagnostic.IDE0058.severity = warning
+
+# IDE0040: Add accessibility modifiers
+dotnet_diagnostic.IDE0040.severity = warning
+
+# IDE0041: Use 'var' keyword appropriately (align with our var rules)
+dotnet_diagnostic.IDE0041.severity = suggestion
+
+# IDE0055: Fix formatting (auto formatting)
+dotnet_diagnostic.IDE0055.severity = warning
+
+# IDE0079: Remove unnecessary suppression
+dotnet_diagnostic.IDE0079.severity = warning

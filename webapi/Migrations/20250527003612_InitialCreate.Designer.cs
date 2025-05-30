@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using webapi.Data;
 
@@ -10,9 +11,11 @@ using webapi.Data;
 namespace webapi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250527003612_InitialCreate")]
+    partial class InitialCreate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.5");
@@ -44,16 +47,6 @@ namespace webapi.Migrations
                         .IsUnique();
 
                     b.ToTable("Applications");
-
-                    b.HasData(
-                        new
-                        {
-                            ApplicationId = 1,
-                            ApplicationName = "MVCWebApp",
-                            ClientId = "53D3C1E6-5487-8C6E-A8E4BD59940E",
-                            Scopes = "read,write,delete",
-                            Secret = "0673FC70-0514-4011-CCA3-DF9BC03201BC"
-                        });
                 });
 
             modelBuilder.Entity("webapi.Models.Shirt", b =>

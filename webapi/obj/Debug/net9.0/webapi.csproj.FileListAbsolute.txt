@@ -213,3 +213,5 @@
 /Users/mohamadelhajhassan/code/work/dotnet-projects/webapi/obj/Debug/net9.0/webapi.pdb
 /Users/mohamadelhajhassan/code/work/dotnet-projects/webapi/obj/Debug/net9.0/webapi.genruntimeconfig.cache
 /Users/mohamadelhajhassan/code/work/dotnet-projects/webapi/obj/Debug/net9.0/ref/webapi.dll
+/Users/mohamadelhajhassan/code/work/dotnet-projects/webapi/obj/Debug/net9.0/webapi.sourcelink.json
+/Users/mohamadelhajhassan/code/work/dotnet-projects/webapi/bin/Debug/net9.0/secrets.json

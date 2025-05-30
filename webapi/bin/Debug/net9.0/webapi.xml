@@ -4,38 +4,90 @@
         <name>webapi</name>
     </assembly>
     <members>
-        <member name="M:webapi.Authority.AppRepository.GetApplicationByClientId(System.String)">
+        <member name="M:webapi.Authority.IAuthenticator.AuthenticateAsync(System.String,System.String)">
             <summary>
-            Returns an Application object matching the provided ClientId.
-            </summary>
-            <param name="clientId">The client ID to match.</param>
-            <returns>An Application instance if found; otherwise, null.</returns>
-        </member>
-        <member name="M:webapi.Authority.AppRepository.GetAllApplications">
-            <summary>
-            Optionally expose all applications for diagnostics.
+            Authenticate client credentials asynchronously.
             </summary>
         </member>
-        <member name="M:webapi.Controllers.AuthorityController.Authenticate(webapi.Authority.AppCredential)">
+        <member name="M:webapi.Authority.IAuthenticator.CreateTokenAsync(System.String,System.DateTime)">
             <summary>
-            Authenticates an application and returns a JWT token if successful.
-            </summary>
-            <param name="credential">The client credentials.</param>
-            <returns>JWT token and expiration or an error response.</returns>
-        </member>
-        <member name="T:webapi.Controllers.AuthResponse">
-            <summary>
-            Response object for successful authentication.
+            Create a JWT access token asynchronously.
             </summary>
         </member>
-        <member name="P:webapi.Controllers.AuthResponse.AccessToken">
+        <member name="M:webapi.Authority.IAuthenticator.CreateRefreshTokenAsync(System.String,System.DateTime,Microsoft.AspNetCore.Http.HttpContext)">
             <summary>
-            JWT access token.
+            Create a refresh token asynchronously and persist it.
             </summary>
         </member>
-        <member name="P:webapi.Controllers.AuthResponse.ExpiresAt">
+        <member name="M:webapi.Authority.IAuthenticator.ValidateRefreshTokenAsync(System.String,System.String)">
             <summary>
-            Token expiration date and time (UTC).
+            Validate the refresh token asynchronously.
+            </summary>
+        </member>
+        <member name="M:webapi.Authority.IAuthenticator.RevokeRefreshTokenAsync(System.String)">
+            <summary>
+            Revoke a refresh token asynchronously.
+            </summary>
+        </member>
+        <member name="M:webapi.Authority.IAuthenticator.VerifyToken(System.String,System.String)">
+            <summary>
+            Verify a JWT token and get claims.
+            </summary>
+        </member>
+        <member name="M:webapi.Authority.IAuthenticator.ReadClaims(System.String)">
+            <summary>
+            Read claims from a JWT without validating.
+            </summary>
+        </member>
+        <member name="M:webapi.Controllers.AuthorityController.#ctor(Microsoft.Extensions.Logging.ILogger{webapi.Controllers.AuthorityController},webapi.Authority.IAuthenticator)">
+            <summary>
+            Constructor for AuthorityController.
+            </summary>
+        </member>
+        <member name="M:webapi.Controllers.AuthorityController.GetToken(webapi.Models.AppCredential)">
+            <summary>
+            Obtain access and refresh tokens using client credentials.
+            </summary>
+            <param name="credentials">Client credentials</param>
+            <returns>Access and refresh tokens</returns>
+        </member>
+        <member name="M:webapi.Controllers.AuthorityController.Refresh(webapi.Controllers.AuthorityController.RefreshRequest)">
+            <summary>
+            Refresh access token using a valid refresh token.
+            </summary>
+            <param name="request">Refresh token request</param>
+            <returns>New access token and refresh token</returns>
+        </member>
+        <member name="M:webapi.Controllers.AuthorityController.Revoke(webapi.Controllers.AuthorityController.RevokeTokenRequest)">
+            <summary>
+            Revoke a refresh token.
+            </summary>
+            <param name="request">Revoke token request</param>
+            <returns>Status of revocation</returns>
+        </member>
+        <member name="T:webapi.Controllers.AuthorityController.RefreshRequest">
+            <summary>
+            Refresh token request model.
+            </summary>
+        </member>
+        <member name="P:webapi.Controllers.AuthorityController.RefreshRequest.ClientId">
+            <summary>
+            Client identifier.
+            </summary>
+        </member>
+        <member name="P:webapi.Controllers.AuthorityController.RefreshRequest.RefreshToken">
+            <summary>
+            Refresh token string.
+            </summary>
+        </member>
+        <member name="T:webapi.Controllers.AuthorityController.RevokeTokenRequest">
+            <summary>
+            Revoke token request model.
+            </summary>
+        </member>
+        <member name="P:webapi.Controllers.AuthorityController.RevokeTokenRequest.RefreshToken">
+            <summary>
+            Refresh token string.
             </summary>
         </member>
         <member name="T:webapi.Migrations.init">
@@ -49,6 +101,90 @@
         </member>
         <member name="M:webapi.Migrations.init.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
+        </member>
+        <member name="T:webapi.Migrations.InitialCreate">
+            <inheritdoc />
+        </member>
+        <member name="M:webapi.Migrations.InitialCreate.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:webapi.Migrations.InitialCreate.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:webapi.Migrations.InitialCreate.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:webapi.Migrations.SeedApplicationData">
+            <inheritdoc />
+        </member>
+        <member name="M:webapi.Migrations.SeedApplicationData.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:webapi.Migrations.SeedApplicationData.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:webapi.Migrations.SeedApplicationData.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:webapi.Models.AppCredential">
+            <summary>
+            Client credential request model.
+            </summary>
+        </member>
+        <member name="P:webapi.Models.AppCredential.ClientId">
+            <summary>
+            Client identifier.
+            </summary>
+        </member>
+        <member name="P:webapi.Models.AppCredential.Secret">
+            <summary>
+            Client secret.
+            </summary>
+        </member>
+        <member name="T:webapi.Models.AuthResponse">
+            <summary>
+            Auth response model for refreshed tokens.
+            </summary>
+        </member>
+        <member name="P:webapi.Models.AuthResponse.AccessToken">
+            <summary>
+            Access token string.
+            </summary>
+        </member>
+        <member name="P:webapi.Models.AuthResponse.ExpiresAt">
+            <summary>
+            Access token expiration time (UTC).
+            </summary>
+        </member>
+        <member name="P:webapi.Models.AuthResponse.RefreshToken">
+            <summary>
+            Refresh token string.
+            </summary>
+        </member>
+        <member name="T:webapi.Models.TokenResponse">
+            <summary>
+            Token response model with access and refresh tokens.
+            </summary>
+        </member>
+        <member name="P:webapi.Models.TokenResponse.AccessToken">
+            <summary>
+            Access token string.
+            </summary>
+        </member>
+        <member name="P:webapi.Models.TokenResponse.ExpiresInSeconds">
+            <summary>
+            Access token expiration in seconds.
+            </summary>
+        </member>
+        <member name="P:webapi.Models.TokenResponse.RefreshToken">
+            <summary>
+            Refresh token string.
+            </summary>
+        </member>
+        <member name="P:webapi.Models.TokenResponse.RefreshTokenExpiresInSeconds">
+            <summary>
+            Refresh token expiration in seconds.
+            </summary>
         </member>
     </members>
 </doc>

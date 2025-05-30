@@ -11,6 +11,6 @@ accept: application/json
 Content-Type: application/json
 
 {
-"ClinetId": "53D3C1E6-5487-8C6E-A8E4BD59940E",
-"Secret": "0673FC70-0514-4011-CCA3-DF9BC03201BC"
+"clinetId": "53D3C1E6-5487-8C6E-A8E4BD59940E",
+"secret": "0673FC70-0514-4011-CCA3-DF9BC03201BC"
 }

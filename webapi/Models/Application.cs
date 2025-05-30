@@ -1,4 +1,4 @@
-namespace webapi.Authority
+﻿namespace webapi.Models
 {
     public class Application
     {

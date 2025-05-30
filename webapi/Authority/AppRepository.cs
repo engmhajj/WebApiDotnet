@@ -1,35 +1,42 @@
-﻿namespace webapi.Authority;
+﻿using Microsoft.EntityFrameworkCore;
+using webapi.Data;
+using webapi.Models;
 
-public static class AppRepository
+namespace webapi.Authority
 {
-    private static readonly List<Application> _applications = new()
+    public static class AppRepository
     {
-        new Application
+        // Async fetch from DB
+        public static async Task<Application?> GetApplicationByClientIdAsync(string clientId, ApplicationDbContext db)
         {
-            ApplicationId = 1,
-            ApplicationName = "MVCWebApp",
-            ClientId = "53D3C1E6-5487-8C6E-A8E4BD59940E",
-            Secret = "0673FC70-0514-4011-CCA3-DF9BC03201BC",
-            Scopes = "read,write,delete"
+            if (string.IsNullOrWhiteSpace(clientId))
+                return null;
+
+            return await db.Applications.FirstOrDefaultAsync(a => a.ClientId == clientId);
         }
-    };
 
-    /// <summary>
-    /// Returns an Application object matching the provided ClientId.
-    /// </summary>
-    /// <param name="clientId">The client ID to match.</param>
-    /// <returns>An Application instance if found; otherwise, null.</returns>
-    public static Application? GetApplicationByClientId(string clientId)
-    {
-        if (string.IsNullOrWhiteSpace(clientId))
-            return null;
+        // Fallback in-memory apps for demo/testing
+        private static readonly List<Application> _applications = new()
+        {
+            new Application
+            {
+                ApplicationId = 1,
+                ApplicationName = "MVCWebApp",
+                ClientId = "53D3C1E6-5487-8C6E-A8E4BD59940E",
+                Secret = "0673FC70-0514-4011-CCA3-DF9BC03201BC",
+                Scopes = "read,write,delete"
+            }
+        };
 
-        return _applications.FirstOrDefault(app =>
-            app.ClientId.Equals(clientId, StringComparison.OrdinalIgnoreCase));
+        public static Application? GetApplicationByClientId(string clientId)
+        {
+            if (string.IsNullOrWhiteSpace(clientId))
+                return null;
+
+            return _applications.FirstOrDefault(app =>
+                app.ClientId.Equals(clientId, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public static IReadOnlyList<Application> GetAllApplications() => _applications.AsReadOnly();
     }
-
-    /// <summary>
-    /// Optionally expose all applications for diagnostics.
-    /// </summary>
-    public static IReadOnlyList<Application> GetAllApplications() => _applications.AsReadOnly();
 }
