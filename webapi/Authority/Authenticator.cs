@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using webapi.Data;
+using webapi.Security;
 using webapi.Token;
 
 namespace webapi.Authority
@@ -22,15 +23,32 @@ namespace webapi.Authority
                          ?? throw new InvalidOperationException("SecretKey is missing in configuration.");
         }
 
+        // Authenticate by verifying the hashed secret matches
         public async Task<bool> AuthenticateAsync(string clientId, string secret)
         {
             if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(secret))
+            {
+                _logger.LogWarning("Authentication failed: clientId or secret is empty.");
                 return false;
+            }
 
             var app = await AppRepository.GetApplicationByClientIdAsync(clientId, _db);
-            return app != null && app.Secret == secret;
+            if (app == null)
+            {
+                _logger.LogWarning("Authentication failed: clientId '{ClientId}' not found.", clientId);
+                return false;
+            }
+
+            var isValid = SecretHasher.VerifySecret(secret, app.SecretSalt, app.SecretHash);
+            if (!isValid)
+            {
+                _logger.LogWarning("Authentication failed: invalid secret for clientId '{ClientId}'.", clientId);
+            }
+
+            return isValid;
         }
 
+        // Create JWT token for authenticated client
         public async Task<string> CreateTokenAsync(string clientId, DateTime expiresAt)
         {
             var app = await AppRepository.GetApplicationByClientIdAsync(clientId, _db)
@@ -38,26 +56,26 @@ namespace webapi.Authority
 
             var claims = new List<Claim>
             {
-                new Claim("AppName", app.ApplicationName),
+                new Claim("AppName", app.ApplicationName)
             };
 
-            var scopes = app.Scopes?.Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (scopes != null)
+            var scopes = app.Scopes?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (scopes != null && scopes.Any())
             {
-                foreach (var scope in scopes)
-                {
-                    claims.Add(new Claim(scope.ToLowerInvariant(), "true"));
-                }
+                claims.Add(new Claim("scope", string.Join(' ', scopes)));
             }
 
-            var secretKeyBytes = Encoding.ASCII.GetBytes(_secretKey);
+            var secretKeyBytes = Encoding.UTF8.GetBytes(_secretKey);
             var signingKey = new SymmetricSecurityKey(secretKeyBytes);
+            var now = DateTime.UtcNow;
+
+            claims.Add(new Claim(JwtRegisteredClaimNames.Iat, new DateTimeOffset(now).ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64));
 
             var jwt = new JwtSecurityToken(
                 issuer: "WebApi",
                 audience: "WebClients",
                 claims: claims,
-                notBefore: DateTime.UtcNow,
+                notBefore: now,
                 expires: expiresAt,
                 signingCredentials: new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256)
             );
@@ -65,10 +83,18 @@ namespace webapi.Authority
             return new JwtSecurityTokenHandler().WriteToken(jwt);
         }
 
+        // Create a new refresh token, hash it and store in DB
         public async Task<string> CreateRefreshTokenAsync(string clientId, DateTime expiresAt, HttpContext httpContext)
         {
             var rawToken = Guid.NewGuid().ToString("N");
             var hashedToken = TokenHasher.Hash(rawToken);
+
+            // Retrieve IP address considering X-Forwarded-For header
+            string? ipAddress = httpContext.Connection.RemoteIpAddress?.ToString();
+            if (httpContext.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
+            {
+                ipAddress = forwardedFor.FirstOrDefault();
+            }
 
             var refresh = new RefreshToken
             {
@@ -76,7 +102,7 @@ namespace webapi.Authority
                 ClientId = clientId,
                 ExpiresAt = expiresAt,
                 CreatedAt = DateTime.UtcNow,
-                CreatedFromIp = httpContext.Connection.RemoteIpAddress?.ToString(),
+                CreatedFromIp = ipAddress,
                 DeviceInfo = httpContext.Request.Headers["User-Agent"].ToString()
             };
 
@@ -86,6 +112,7 @@ namespace webapi.Authority
             return rawToken;
         }
 
+        // Validate if refresh token is valid and not revoked
         public async Task<bool> ValidateRefreshTokenAsync(string refreshToken, string clientId)
         {
             var hashed = TokenHasher.Hash(refreshToken);
@@ -96,6 +123,7 @@ namespace webapi.Authority
             return stored != null && stored.ClientId == clientId;
         }
 
+        // Revoke a refresh token by marking it revoked
         public async Task<bool> RevokeRefreshTokenAsync(string refreshToken)
         {
             var hashed = TokenHasher.Hash(refreshToken);
@@ -109,6 +137,7 @@ namespace webapi.Authority
             return true;
         }
 
+        // Validate JWT token and return claims if valid
         public IEnumerable<Claim>? VerifyToken(string token, string? secretKey = null)
         {
             if (string.IsNullOrWhiteSpace(token))
@@ -116,7 +145,7 @@ namespace webapi.Authority
 
             token = RemoveBearerPrefix(token);
 
-            var key = Encoding.ASCII.GetBytes(secretKey ?? _secretKey);
+            var key = Encoding.UTF8.GetBytes(secretKey ?? _secretKey);
             var tokenHandler = new JwtSecurityTokenHandler();
 
             try
@@ -140,6 +169,7 @@ namespace webapi.Authority
             }
         }
 
+        // Read claims from JWT without validating signature
         public IEnumerable<Claim> ReadClaims(string token)
         {
             token = RemoveBearerPrefix(token);
@@ -147,6 +177,7 @@ namespace webapi.Authority
             return jwt.Claims;
         }
 
+        // Remove "Bearer " prefix from token string
         private static string RemoveBearerPrefix(string token)
         {
             return token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)

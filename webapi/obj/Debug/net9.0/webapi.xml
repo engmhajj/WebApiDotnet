@@ -39,7 +39,7 @@
             Read claims from a JWT without validating.
             </summary>
         </member>
-        <member name="M:webapi.Controllers.AuthorityController.#ctor(Microsoft.Extensions.Logging.ILogger{webapi.Controllers.AuthorityController},webapi.Authority.IAuthenticator)">
+        <member name="M:webapi.Controllers.AuthorityController.#ctor(Microsoft.Extensions.Logging.ILogger{webapi.Controllers.AuthorityController},webapi.Authority.IAuthenticator,webapi.Services.RefreshTokenService)">
             <summary>
             Constructor for AuthorityController.
             </summary>
@@ -51,56 +51,19 @@
             <param name="credentials">Client credentials</param>
             <returns>Access and refresh tokens</returns>
         </member>
-        <member name="M:webapi.Controllers.AuthorityController.Refresh(webapi.Controllers.AuthorityController.RefreshRequest)">
+        <member name="M:webapi.Controllers.AuthorityController.Refresh(webapi.Token.RefreshRequest)">
             <summary>
             Refresh access token using a valid refresh token.
             </summary>
             <param name="request">Refresh token request</param>
             <returns>New access token and refresh token</returns>
         </member>
-        <member name="M:webapi.Controllers.AuthorityController.Revoke(webapi.Controllers.AuthorityController.RevokeTokenRequest)">
+        <member name="M:webapi.Controllers.AuthorityController.Revoke(webapi.Token.RevokeTokenRequest)">
             <summary>
             Revoke a refresh token.
             </summary>
             <param name="request">Revoke token request</param>
             <returns>Status of revocation</returns>
-        </member>
-        <member name="T:webapi.Controllers.AuthorityController.RefreshRequest">
-            <summary>
-            Refresh token request model.
-            </summary>
-        </member>
-        <member name="P:webapi.Controllers.AuthorityController.RefreshRequest.ClientId">
-            <summary>
-            Client identifier.
-            </summary>
-        </member>
-        <member name="P:webapi.Controllers.AuthorityController.RefreshRequest.RefreshToken">
-            <summary>
-            Refresh token string.
-            </summary>
-        </member>
-        <member name="T:webapi.Controllers.AuthorityController.RevokeTokenRequest">
-            <summary>
-            Revoke token request model.
-            </summary>
-        </member>
-        <member name="P:webapi.Controllers.AuthorityController.RevokeTokenRequest.RefreshToken">
-            <summary>
-            Refresh token string.
-            </summary>
-        </member>
-        <member name="T:webapi.Migrations.init">
-            <inheritdoc />
-        </member>
-        <member name="M:webapi.Migrations.init.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
-            <inheritdoc />
-        </member>
-        <member name="M:webapi.Migrations.init.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
-            <inheritdoc />
-        </member>
-        <member name="M:webapi.Migrations.init.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
-            <inheritdoc />
         </member>
         <member name="T:webapi.Migrations.InitialCreate">
             <inheritdoc />
@@ -112,18 +75,6 @@
             <inheritdoc />
         </member>
         <member name="M:webapi.Migrations.InitialCreate.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
-            <inheritdoc />
-        </member>
-        <member name="T:webapi.Migrations.SeedApplicationData">
-            <inheritdoc />
-        </member>
-        <member name="M:webapi.Migrations.SeedApplicationData.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
-            <inheritdoc />
-        </member>
-        <member name="M:webapi.Migrations.SeedApplicationData.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
-            <inheritdoc />
-        </member>
-        <member name="M:webapi.Migrations.SeedApplicationData.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
         <member name="T:webapi.Models.AppCredential">
@@ -184,6 +135,31 @@
         <member name="P:webapi.Models.TokenResponse.RefreshTokenExpiresInSeconds">
             <summary>
             Refresh token expiration in seconds.
+            </summary>
+        </member>
+        <member name="M:webapi.Security.SecretHasher.HashSecret(System.String)">
+            <summary>
+            Generates a salt and hashes the secret using PBKDF2.
+            </summary>
+        </member>
+        <member name="M:webapi.Security.SecretHasher.VerifySecret(System.String,System.String,System.String)">
+            <summary>
+            Verifies the secret against the stored salt and hash.
+            </summary>
+        </member>
+        <member name="M:webapi.Security.SecretHasher.HashWithPbkdf2(System.String,System.Byte[])">
+            <summary>
+            Hashes the secret using PBKDF2.
+            </summary>
+        </member>
+        <member name="T:webapi.Token.RevokeTokenRequest">
+            <summary>
+            Revoke token request model.
+            </summary>
+        </member>
+        <member name="P:webapi.Token.RevokeTokenRequest.RefreshToken">
+            <summary>
+            Refresh token string.
             </summary>
         </member>
     </members>

@@ -21,7 +21,7 @@ public class ShirtsController : ControllerBase
     }
 
     [HttpGet]
-    [RequiredClaim("read", "true")]
+    [RequiredClaim("scope", "read")]
     public IActionResult GetShirts()
     {
         var shirts = _db.Shirts.ToList();
@@ -30,7 +30,7 @@ public class ShirtsController : ControllerBase
 
     [HttpGet("{id}")]
     [TypeFilter(typeof(Shirt_ValidateShirtIdFilterAttribute))]
-    [RequiredClaim("read", "true")]
+    [RequiredClaim("scope", "read")]
     public IActionResult GetShirtById(int id)
     {
         var shirt = HttpContext.Items["shirt"] as Shirt;
@@ -38,7 +38,7 @@ public class ShirtsController : ControllerBase
     }
 
     [HttpGet("{id}/{color}")]
-    [RequiredClaim("read", "true")]
+    [RequiredClaim("scope", "read")]
     public IActionResult GetShirtByIdAndColor(int id, [FromRoute] string color)
     {
         // Consider querying the DB if you want actual filtering instead of just returning a string
@@ -47,7 +47,7 @@ public class ShirtsController : ControllerBase
 
     [HttpPost]
     [TypeFilter(typeof(Shirt_ValidateCreateShirtFilterAttribute))]
-    [RequiredClaim("write", "true")]
+    [RequiredClaim("scope", "write")]
     public IActionResult CreateShirtFromForm([FromBody] Shirt shirt)
     {
         _db.Shirts.Add(shirt);
@@ -60,7 +60,7 @@ public class ShirtsController : ControllerBase
     [TypeFilter(typeof(Shirt_ValidateShirtIdFilterAttribute))]
     [Shirt_ValidateUpdateShirtFilter]
     [TypeFilter(typeof(Shirt_HandleUpdateExceptionsFilterAttribute))]
-    [RequiredClaim("write", "true")]
+    [RequiredClaim("scope", "write")]
     public IActionResult UpdateShirt(int id, [FromBody] Shirt shirt)
     {
         var shirtToUpdate = HttpContext.Items["shirt"] as Shirt;
@@ -81,7 +81,7 @@ public class ShirtsController : ControllerBase
 
     [HttpDelete("{id}")]
     [TypeFilter(typeof(Shirt_ValidateShirtIdFilterAttribute))]
-    [RequiredClaim("delete", "true")]
+    [RequiredClaim("scope", "delete")]
     public IActionResult DeleteShirt(int id)
     {
         var shirtToDelete = HttpContext.Items["shirt"] as Shirt;

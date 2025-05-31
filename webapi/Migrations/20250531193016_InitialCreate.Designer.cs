@@ -11,8 +11,8 @@ using webapi.Data;
 namespace webapi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250527004827_SeedApplicationData")]
-    partial class SeedApplicationData
+    [Migration("20250531193016_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -20,7 +20,7 @@ namespace webapi.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.5");
 
-            modelBuilder.Entity("webapi.Authority.Application", b =>
+            modelBuilder.Entity("webapi.Models.Application", b =>
                 {
                     b.Property<int>("ApplicationId")
                         .ValueGeneratedOnAdd()
@@ -37,7 +37,11 @@ namespace webapi.Migrations
                     b.Property<string>("Scopes")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Secret")
+                    b.Property<string>("SecretHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SecretSalt")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -55,7 +59,8 @@ namespace webapi.Migrations
                             ApplicationName = "MVCWebApp",
                             ClientId = "53D3C1E6-5487-8C6E-A8E4BD59940E",
                             Scopes = "read,write,delete",
-                            Secret = "0673FC70-0514-4011-CCA3-DF9BC03201BC"
+                            SecretHash = "FLmgZFaLlSfZ23zLpRA4QZuP5L5G0maULVm+XF/HrJU=",
+                            SecretSalt = "BO0dExW/2oK6w8Ns6h6Cmg=="
                         });
                 });
 

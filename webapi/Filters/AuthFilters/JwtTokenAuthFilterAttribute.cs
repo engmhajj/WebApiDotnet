@@ -5,51 +5,80 @@ using webapi.Authority;
 
 namespace webapi.Filters.AuthFilters;
 
+// This class implements IAsyncAuthorizationFilter, which allows it to intercept HTTP requests before they reach the controller action to perform authorization logic.
 public class JwtTokenAuthFilter : IAsyncAuthorizationFilter
 {
-    private readonly Authenticator _authenticator;
+    private readonly IAuthenticator _authenticator;
 
-    public JwtTokenAuthFilter(Authenticator authenticator)
+    // Takes an Authenticator instance via dependency injection to verify JWT tokens.
+    public JwtTokenAuthFilter(IAuthenticator authenticator)
     {
         _authenticator = authenticator;
     }
 
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
-        var request = context.HttpContext.Request;
+        // Check if the request has an Authorization header
+        HttpRequest request = context.HttpContext.Request;
 
-        if (!request.Headers.TryGetValue("Authorization", out var authHeader) || string.IsNullOrWhiteSpace(authHeader))
+        //Check for Authorization Header
+        if (!request.Headers.TryGetValue("Authorization", out Microsoft.Extensions.Primitives.StringValues authHeader) || string.IsNullOrWhiteSpace(authHeader))
         {
             context.Result = new UnauthorizedResult();
             return;
         }
-
-        var token = authHeader.ToString().Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase).Trim();
-
+        //  Extract and Clean the Token
+        string token = authHeader.ToString().Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase).Trim();
+        // If the token is empty or null, return Unauthorized
         if (string.IsNullOrWhiteSpace(token))
         {
             context.Result = new UnauthorizedResult();
             return;
         }
-        var config = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
-        var secretKey = config.GetValue<string>("SecretKey");
+        // Retrieve the secret key from configuration
+        // Gets the JWT secret key from the app configuration.
+        IConfiguration config = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
+        string? secretKey = config.GetValue<string>("SecretKey");
 
-        var claims = _authenticator.VerifyToken(token, secretKey);
+        //Validate Token
+        //Uses Authenticator to validate the JWT
+        IEnumerable<System.Security.Claims.Claim>? claims = _authenticator.VerifyToken(token, secretKey);
         if (claims == null)
         {
             context.Result = new UnauthorizedResult();
             return;
         }
 
+        //Check Required Claims (Authorization)
+        //Retrieves all RequiredClaimAttributes applied on the controller/action.
+        //Validates each required claim is present in the JWT claims:
         var requiredClaims = context.ActionDescriptor.EndpointMetadata.OfType<RequiredClaimAttribute>().ToList();
-        if (requiredClaims.Any() && !requiredClaims.All(rc => claims.Any(c =>
-            string.Equals(c.Type, rc.ClaimType, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(c.Value, rc.ClaimValue, StringComparison.OrdinalIgnoreCase))))
+        if (requiredClaims.Count > 0)
         {
-            context.Result = new ForbidResult();
-            return;
+            foreach (var rc in requiredClaims)
+            {
+                // Find the claim by type
+                var matchedClaim = claims.FirstOrDefault(c => string.Equals(c.Type, rc.ClaimType, StringComparison.OrdinalIgnoreCase));
+
+                if (matchedClaim is null)
+                {
+                    context.Result = new ForbidResult();
+                    return;
+                }
+
+                // Split claim value if it has multiple scopes
+                var values = matchedClaim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                // Check if the required value is present
+                if (!values.Contains(rc.ClaimValue, StringComparer.OrdinalIgnoreCase))
+                {
+                    context.Result = new ForbidResult();
+                    return;
+                }
+            }
         }
 
+        //A dummy await to satisfy the async signature.
         await Task.CompletedTask;
     }
 }

@@ -3,8 +3,6 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
-
 namespace webapi.Migrations
 {
     /// <inheritdoc />
@@ -13,26 +11,6 @@ namespace webapi.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DeleteData(
-                table: "Shirts",
-                keyColumn: "ShirtId",
-                keyValue: 1);
-
-            migrationBuilder.DeleteData(
-                table: "Shirts",
-                keyColumn: "ShirtId",
-                keyValue: 2);
-
-            migrationBuilder.DeleteData(
-                table: "Shirts",
-                keyColumn: "ShirtId",
-                keyValue: 3);
-
-            migrationBuilder.DeleteData(
-                table: "Shirts",
-                keyColumn: "ShirtId",
-                keyValue: 4);
-
             migrationBuilder.CreateTable(
                 name: "Applications",
                 columns: table => new
@@ -41,7 +19,8 @@ namespace webapi.Migrations
                         .Annotation("Sqlite:Autoincrement", true),
                     ApplicationName = table.Column<string>(type: "TEXT", nullable: false),
                     ClientId = table.Column<string>(type: "TEXT", nullable: false),
-                    Secret = table.Column<string>(type: "TEXT", nullable: false),
+                    SecretSalt = table.Column<string>(type: "TEXT", nullable: false),
+                    SecretHash = table.Column<string>(type: "TEXT", nullable: false),
                     Scopes = table.Column<string>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
@@ -68,6 +47,28 @@ namespace webapi.Migrations
                     table.PrimaryKey("PK_RefreshTokens", x => x.RefreshTokenId);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "Shirts",
+                columns: table => new
+                {
+                    ShirtId = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    Brand = table.Column<string>(type: "TEXT", nullable: false),
+                    Color = table.Column<string>(type: "TEXT", nullable: false),
+                    Size = table.Column<int>(type: "INTEGER", nullable: true),
+                    Gender = table.Column<string>(type: "TEXT", nullable: false),
+                    Price = table.Column<double>(type: "REAL", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Shirts", x => x.ShirtId);
+                });
+
+            migrationBuilder.InsertData(
+                table: "Applications",
+                columns: new[] { "ApplicationId", "ApplicationName", "ClientId", "Scopes", "SecretHash", "SecretSalt" },
+                values: new object[] { 1, "MVCWebApp", "53D3C1E6-5487-8C6E-A8E4BD59940E", "read,write,delete", "FLmgZFaLlSfZ23zLpRA4QZuP5L5G0maULVm+XF/HrJU=", "BO0dExW/2oK6w8Ns6h6Cmg==" });
+
             migrationBuilder.CreateIndex(
                 name: "IX_Applications_ClientId",
                 table: "Applications",
@@ -84,16 +85,8 @@ namespace webapi.Migrations
             migrationBuilder.DropTable(
                 name: "RefreshTokens");
 
-            migrationBuilder.InsertData(
-                table: "Shirts",
-                columns: new[] { "ShirtId", "Brand", "Color", "Gender", "Price", "Size" },
-                values: new object[,]
-                {
-                    { 1, "hamada", "Blue", "Men", 30.0, 10 },
-                    { 2, "My brand", "Black", "Men", 35.0, 12 },
-                    { 3, "your brand", "Pink", "Women", 28.0, 8 },
-                    { 4, "your brand", "yello", "Women", 30.0, 9 }
-                });
+            migrationBuilder.DropTable(
+                name: "Shirts");
         }
     }
 }

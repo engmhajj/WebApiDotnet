@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using webapi.Models;
+using webapi.Security;
 using webapi.Token;
 
 namespace webapi.Data
@@ -17,17 +18,36 @@ namespace webapi.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Application entity config
+            // You can optionally generate these values once and paste them below.
+            var clientSecret = "0673FC70-0514-4011-CCA3-DF9BC03201BC";
+            // var (salt, hash) = SecretHasher.HashSecret(clientSecret);
+
+            // Seed Application entity
+            modelBuilder.Entity<Application>().HasData(
+                new Application
+                {
+                    ApplicationId = 1,
+                    ApplicationName = "MVCWebApp",
+                    ClientId = "53D3C1E6-5487-8C6E-A8E4BD59940E",
+                    SecretSalt = "BO0dExW/2oK6w8Ns6h6Cmg==",                     // fixed base64 string
+                    SecretHash = "FLmgZFaLlSfZ23zLpRA4QZuP5L5G0maULVm+XF/HrJU=",                         // fixed base64 string
+                    Scopes = "read,write,delete"
+                }
+            );
+
+            // Configure Application entity
             modelBuilder.Entity<Application>(entity =>
             {
                 entity.HasKey(a => a.ApplicationId);
                 entity.HasIndex(a => a.ClientId).IsUnique();
                 entity.Property(a => a.ApplicationName).IsRequired();
                 entity.Property(a => a.ClientId).IsRequired();
-                entity.Property(a => a.Secret).IsRequired();
+                entity.Property(a => a.SecretHash).IsRequired();
+                entity.Property(a => a.SecretSalt).IsRequired();
+                entity.Property(a => a.Scopes);
             });
 
-            // RefreshToken entity config
+            // Configure RefreshToken entity
             modelBuilder.Entity<RefreshToken>(entity =>
             {
                 entity.HasKey(t => t.RefreshTokenId);
@@ -37,18 +57,6 @@ namespace webapi.Data
                 entity.Property(t => t.CreatedAt).IsRequired();
                 entity.Property(t => t.IsRevoked).HasDefaultValue(false);
             });
-
-            // Seed data for initial Application
-            modelBuilder.Entity<Application>().HasData(
-                new Application
-                {
-                    ApplicationId = 1,
-                    ApplicationName = "MVCWebApp",
-                    ClientId = "53D3C1E6-5487-8C6E-A8E4BD59940E",
-                    Secret = "0673FC70-0514-4011-CCA3-DF9BC03201BC",
-                    Scopes = "read,write,delete"
-                }
-            );
         }
     }
 }

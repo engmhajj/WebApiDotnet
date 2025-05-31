@@ -1,9 +1,8 @@
-﻿using System;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using webapi.Authority;
 using webapi.Data;
+using webapi.Models;
 using webapi.Token;
 
 namespace webapi.Services
@@ -19,22 +18,58 @@ namespace webapi.Services
             _authenticator = authenticator ?? throw new ArgumentNullException(nameof(authenticator));
         }
 
-        public async Task<string> RefreshAccessTokenAsync(string rawToken, string clientId)
+        public async Task<TokenResponse> RefreshAccessTokenAsync(string oldRawRefreshToken, string clientId, HttpContext httpContext)
         {
-            var hashed = TokenHasher.Hash(rawToken);
+            var hashed = TokenHasher.Hash(oldRawRefreshToken);
 
             var stored = await _db.RefreshTokens
-                .FirstOrDefaultAsync(rt => rt.Token == hashed && rt.ClientId == clientId);
+                .FirstOrDefaultAsync(rt => rt.Token == hashed);
 
-            if (stored == null || stored.ExpiresAt < DateTime.UtcNow || stored.IsRevoked)
-                throw new SecurityTokenException("Invalid or expired refresh token.");
+            if (stored == null)
+                throw new SecurityTokenException("Refresh token not found.");
+            if (stored.ClientId != clientId)
+                throw new SecurityTokenException("Refresh token does not belong to this client.");
+            if (stored.IsRevoked)
+                throw new SecurityTokenException("Refresh token is revoked.");
+            if (stored.ExpiresAt < DateTime.UtcNow)
+                throw new SecurityTokenException("Refresh token is expired.");
 
-            // Optionally rotate refresh tokens (sliding expiration)
-            stored.ExpiresAt = DateTime.UtcNow.AddMinutes(30);
+            // Revoke old refresh token
+            stored.IsRevoked = true;
+
+            // Generate new refresh token
+            var newRawRefreshToken = Guid.NewGuid().ToString("N");
+            var newHashedRefreshToken = TokenHasher.Hash(newRawRefreshToken);
+
+            string? ipAddress = httpContext.Connection.RemoteIpAddress?.ToString();
+            if (httpContext.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
+            {
+                ipAddress = forwardedFor.FirstOrDefault();
+            }
+
+            var newRefreshToken = new RefreshToken
+            {
+                Token = newHashedRefreshToken,
+                ClientId = clientId,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(30),
+                CreatedFromIp = ipAddress,
+                DeviceInfo = httpContext.Request.Headers["User-Agent"].ToString()
+            };
+
+            await _db.RefreshTokens.AddAsync(newRefreshToken);
+
+            // Save revoked + new token changes
             await _db.SaveChangesAsync();
 
-            // Create new access token using the async CreateTokenAsync method
-            return await _authenticator.CreateTokenAsync(clientId, DateTime.UtcNow.AddMinutes(10));
+            // Generate new access token
+            var newAccessToken = await _authenticator.CreateTokenAsync(clientId, DateTime.UtcNow.AddMinutes(10));
+
+            return new TokenResponse
+            {
+                AccessToken = newAccessToken,
+                RefreshToken = newRawRefreshToken
+            };
         }
 
         public async Task RevokeAsync(string rawToken)

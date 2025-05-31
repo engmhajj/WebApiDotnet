@@ -1,7 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using Swashbuckle.AspNetCore.Annotations;
 using webapi.Authority;
 using webapi.Models;
+using webapi.Services;
+using webapi.Token;
 
 namespace webapi.Controllers
 {
@@ -11,6 +14,8 @@ namespace webapi.Controllers
     {
         private readonly ILogger<AuthorityController> _logger;
         private readonly IAuthenticator _authenticator;
+        private readonly RefreshTokenService _refreshService;
+
 
         private const int AccessTokenExpiryMinutes = 10;
         private const int RefreshTokenExpiryMinutes = 30;
@@ -19,10 +24,11 @@ namespace webapi.Controllers
         /// <summary>
         /// Constructor for AuthorityController.
         /// </summary>
-        public AuthorityController(ILogger<AuthorityController> logger, IAuthenticator authenticator)
+        public AuthorityController(ILogger<AuthorityController> logger, IAuthenticator authenticator, RefreshTokenService refreshService)
         {
             _logger = logger;
             _authenticator = authenticator;
+            _refreshService = refreshService;
         }
 
         /// <summary>
@@ -65,31 +71,32 @@ namespace webapi.Controllers
         /// <returns>New access token and refresh token</returns>
         [HttpPost("refresh")]
         [SwaggerOperation(Summary = "Refresh access token using a valid refresh token")]
-        [ProducesResponseType(typeof(AuthResponse), 200)]
+        [ProducesResponseType(typeof(TokenResponse), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
-        public async Task<ActionResult<AuthResponse>> Refresh([FromBody] RefreshRequest request)
+        public async Task<ActionResult<TokenResponse>> Refresh([FromBody] RefreshRequest request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            if (!await _authenticator.ValidateRefreshTokenAsync(request.RefreshToken, request.ClientId))
+            try
             {
-                _logger.LogWarning("Invalid refresh token for ClientId: {ClientId}", request.ClientId);
-                return Unauthorized();
+                var response = await _refreshService.RefreshAccessTokenAsync(request.RefreshToken, request.ClientId, HttpContext);
+                return Ok(new TokenResponse
+                {
+                    AccessToken = response.AccessToken,
+                    RefreshToken = response.RefreshToken,
+                    ExpiresInSeconds = AccessTokenExpiryMinutes * 60,
+                    RefreshTokenExpiresInSeconds = RefreshTokenExpiryMinutes * 60 // or 7 days if using longer expiry
+                });
             }
-
-            var expiresAt = DateTime.UtcNow.AddMinutes(AccessTokenExpiryMinutes);
-            var accessToken = await _authenticator.CreateTokenAsync(request.ClientId, expiresAt);
-            var newRefreshToken = await _authenticator.CreateRefreshTokenAsync(request.ClientId, DateTime.UtcNow.AddDays(RefreshTokenExpiryDays), HttpContext);
-
-            return Ok(new AuthResponse
+            catch (SecurityTokenException ex)
             {
-                AccessToken = accessToken,
-                ExpiresAt = expiresAt,
-                RefreshToken = newRefreshToken
-            });
+                _logger.LogWarning("Token refresh failed: {Message}", ex.Message);
+                return Unauthorized(new { message = ex.Message });
+            }
         }
+
 
         /// <summary>
         /// Revoke a refresh token.
@@ -114,39 +121,5 @@ namespace webapi.Controllers
             return Ok(new { message = "Refresh token revoked." });
         }
 
-        #region Request and Response DTOs
-
-
-
-        /// <summary>
-        /// Refresh token request model.
-        /// </summary>
-        public class RefreshRequest
-        {
-            /// <summary>
-            /// Client identifier.
-            /// </summary>
-            public string ClientId { get; set; } = string.Empty;
-
-            /// <summary>
-            /// Refresh token string.
-            /// </summary>
-            public string RefreshToken { get; set; } = string.Empty;
-        }
-
-        /// <summary>
-        /// Revoke token request model.
-        /// </summary>
-        public class RevokeTokenRequest
-        {
-            /// <summary>
-            /// Refresh token string.
-            /// </summary>
-            public string RefreshToken { get; set; } = string.Empty;
-        }
-
-
-
-        #endregion
     }
 }
