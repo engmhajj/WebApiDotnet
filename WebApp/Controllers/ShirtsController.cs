@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-
 using WebApp.Data;
 using WebApp.Models;
 
@@ -53,11 +52,13 @@ public class ShirtsController : Controller
     {
         try
         {
-            var shirt = await _webApiExecuter.InvokeGet<Shirt>($"shirts/{shirtId}").ConfigureAwait(false);
+            var shirt = await _webApiExecuter
+                .InvokeGet<ApiResponse<Shirt>>($"shirts/{shirtId}")
+                .ConfigureAwait(false);
             if (shirt == null)
                 return NotFound();
 
-            return View(shirt);
+            return View(shirt.Data);
         }
         catch (WebApiException ex)
         {
@@ -89,7 +90,6 @@ public class ShirtsController : Controller
 
     public async Task<IActionResult> DeleteShirt(int shirtId)
     {
-
         try
         {
             await _webApiExecuter.InvokeDelete($"shirts/{shirtId}").ConfigureAwait(false);
@@ -99,7 +99,9 @@ public class ShirtsController : Controller
         {
             AddErrorsToModelState(ex);
             // return View(nameof(Index), await _webApiExecuter.InvokeGet<List<Shirt>>("shirts").ConfigureAwait(false));
-            var shirts = await _webApiExecuter.InvokeGet<List<Shirt>>("shirts").ConfigureAwait(false);
+            var shirts = await _webApiExecuter
+                .InvokeGet<List<Shirt>>("shirts")
+                .ConfigureAwait(false);
             return View(nameof(Index), shirts);
         }
     }
@@ -114,5 +116,4 @@ public class ShirtsController : Controller
             ModelState.AddModelError(error.Key, string.Join("; ", error.Value));
         }
     }
-
 }

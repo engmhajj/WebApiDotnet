@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using webapi.Attributes;
 using webapi.Data;
+using webapi.Exceptions;
 using webapi.Filters.ActionFilter;
 using webapi.Filters.AuthFilters;
 using webapi.Filters.ExceptionFilters;
@@ -8,6 +9,7 @@ using webapi.Models;
 
 namespace webapi.Controllers;
 
+// [ApiVersion("1.0")]
 [ApiController]
 [Route("api/[controller]")]
 [TypeFilter(typeof(JwtTokenAuthFilter))]
@@ -34,7 +36,10 @@ public class ShirtsController : ControllerBase
     public IActionResult GetShirtById(int id)
     {
         var shirt = HttpContext.Items["shirt"] as Shirt;
-        return shirt is not null ? Ok(shirt) : NotFound();
+        return shirt is not null
+            ? Ok(ApiResponse<Shirt>.Ok(shirt))
+            : throw new NotFoundException("shirt not found");
+        ;
     }
 
     [HttpGet("{id}/{color}")]

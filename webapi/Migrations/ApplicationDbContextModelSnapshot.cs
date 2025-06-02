@@ -48,17 +48,6 @@ namespace webapi.Migrations
                         .IsUnique();
 
                     b.ToTable("Applications");
-
-                    b.HasData(
-                        new
-                        {
-                            ApplicationId = 1,
-                            ApplicationName = "MVCWebApp",
-                            ClientId = "53D3C1E6-5487-8C6E-A8E4BD59940E",
-                            Scopes = "read,write,delete",
-                            SecretHash = "FLmgZFaLlSfZ23zLpRA4QZuP5L5G0maULVm+XF/HrJU=",
-                            SecretSalt = "BO0dExW/2oK6w8Ns6h6Cmg=="
-                        });
                 });
 
             modelBuilder.Entity("webapi.Models.Shirt", b =>
@@ -90,6 +79,46 @@ namespace webapi.Migrations
                     b.ToTable("Shirts");
                 });
 
+            modelBuilder.Entity("webapi.Models.User", b =>
+                {
+                    b.Property<int>("UserId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PasswordSalt")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Roles")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("Users");
+                });
+
             modelBuilder.Entity("webapi.Token.RefreshToken", b =>
                 {
                     b.Property<int>("RefreshTokenId")
@@ -116,6 +145,12 @@ namespace webapi.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RevokedByIp")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Token")
                         .IsRequired()

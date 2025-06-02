@@ -1,16 +1,38 @@
 
-GET http://localhost:5000/api/shirts/
+GET https://localhost:5001/api/shirts/
 accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBcHBOYW1lIjoiTVZDV2ViQXBwIiwic2NvcGUiOiJyZWFkIHdyaXRlIGRlbGV0ZSIsImlhdCI6MTc0ODcyMTg0MiwibmJmIjoxNzQ4NzIxODQyLCJleHAiOjE3NDg3MjI0NDIsImlzcyI6IldlYkFwaSIsImF1ZCI6IldlYkNsaWVudHMifQ.XarY4q6atxeTmzWPt08-fQI8_HxOyyHVU91KRXp_SrM
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBcHBOYW1lIjoiTVZDV2ViQXBwIiwiaWF0IjoxNzQ4Nzg4MzI1LCJzY29wZSI6InJlYWQgd3JpdGUgZGVsZXRlIiwibmJmIjoxNzQ4Nzg4MzI1LCJleHAiOjE3NDg3ODg5MjUsImlzcyI6IldlYkFwaSIsImF1ZCI6IldlYkNsaWVudHMifQ.-fj6FS0aj7_fzdKAKp4aTDLpsS1JCXXJ0-m_CfT6TdQ
 
 
 ###
 
-POST http://localhost:5000/auth
+
+GET https://localhost:5001/api/shirts/1
+accept: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBcHBOYW1lIjoiTVZDV2ViQXBwIiwiaWF0IjoxNzQ4Nzg4MzI1LCJzY29wZSI6InJlYWQgd3JpdGUgZGVsZXRlIiwibmJmIjoxNzQ4Nzg4MzI1LCJleHAiOjE3NDg3ODg5MjUsImlzcyI6IldlYkFwaSIsImF1ZCI6IldlYkNsaWVudHMifQ.-fj6FS0aj7_fzdKAKp4aTDLpsS1JCXXJ0-m_CfT6TdQ
+
+
+###
+
+POST https://localhost:5001/auth
 accept: application/json
 Content-Type: application/json
 
 {
-"clientId": "53D3C1E6-5487-8C6E-A8E4BD59940E",
+"clientId": "53D3C1E6-5487-8E4E-A8E4BD59940E",
 "secret": "0673FC70-0514-4011-CCA3-DF9BC03201BC"
+}
+
+###
+
+POST https://localhost:5001/api/users/register
+accept: application/json
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "email": "testuser@example.com",
+  "password": "Password123!",
+  "confirmPassword": "Password123!",
+  "roles": "user"
 }

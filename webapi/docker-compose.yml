@@ -1,0 +1,23 @@
+﻿version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "80:80"
+    depends_on:
+      - redis
+      - hangfire
+
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"
+
+  hangfire:
+    image: "mcr.microsoft.com/mssql/server:2022-latest"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Your_password123
+    ports:
+      - "1433:1433"

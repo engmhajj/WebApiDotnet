@@ -1,9 +1,8 @@
-﻿namespace WebApp.Data
+﻿namespace WebApp.Data;
+
+public static class Constants
 {
-    public static class Constants
-    {
-        public const string SessionTokenKey = "access_token";
-        public const string ShirtsApiName = "ShirtsApi";
-        public const string AuthorityApiName = "AuthorityApi";
-    }
+    public const string SessionTokenKey = "access_token";
+    public const string ShirtsApiName = "ShirtsApi";
+    public const string AuthorityApiName = "AuthorityApi";
 }

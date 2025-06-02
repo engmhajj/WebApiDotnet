@@ -1,87 +1,123 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using webapi.Authority;
+﻿using System.Security.Cryptography;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using webapi.Data;
-using webapi.Models;
 using webapi.Token;
 
-namespace webapi.Services
+public class RefreshTokenService
 {
-    public class RefreshTokenService
+    private readonly ApplicationDbContext _db;
+    private readonly ILogger<RefreshTokenService> _logger;
+
+    public RefreshTokenService(ApplicationDbContext db, ILogger<RefreshTokenService> logger)
     {
-        private readonly ApplicationDbContext _db;
-        private readonly IAuthenticator _authenticator;
+        _db = db ?? throw new ArgumentNullException(nameof(db));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
 
-        public RefreshTokenService(ApplicationDbContext db, IAuthenticator authenticator)
+    /// <summary>
+    /// Creates a new refresh token for the specified client, stores its hashed value, and returns the plain token.
+    /// </summary>
+    /// <param name="clientId">The client identifier.</param>
+    /// <param name="expiresAt">The expiration date/time of the token.</param>
+    /// <param name="context">The current HTTP context, used to retrieve client IP and device info.</param>
+    /// <returns>The plain refresh token string to be sent to the client.</returns>
+    public async Task<string> CreateRefreshTokenAsync(
+        string clientId,
+        DateTime expiresAt,
+        HttpContext context
+    )
+    {
+        var refreshToken = GenerateSecureToken();
+        var hashedToken = TokenHasher.Hash(refreshToken);
+
+        var ip = GetClientIp(context);
+        var deviceInfo = context.Request.Headers["User-Agent"].ToString();
+
+        var refreshTokenEntity = new RefreshToken
         {
-            _db = db ?? throw new ArgumentNullException(nameof(db));
-            _authenticator = authenticator ?? throw new ArgumentNullException(nameof(authenticator));
-        }
+            Token = hashedToken,
+            ClientId = clientId,
+            ExpiresAt = expiresAt,
+            CreatedAt = DateTime.UtcNow,
+            CreatedFromIp = ip,
+            DeviceInfo = deviceInfo,
+            IsRevoked = false,
+        };
 
-        public async Task<TokenResponse> RefreshAccessTokenAsync(string oldRawRefreshToken, string clientId, HttpContext httpContext)
+        await _db.RefreshTokens.AddAsync(refreshTokenEntity);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Created refresh token for clientId '{ClientId}' from IP '{IpAddress}'",
+            clientId,
+            ip
+        );
+
+        return refreshToken;
+    }
+
+    /// <summary>
+    /// Revokes the specified refresh token, marking it revoked and storing revocation audit info if available.
+    /// </summary>
+    /// <param name="rawToken">The plain refresh token to revoke.</param>
+    /// <param name="context">Optional HTTP context to retrieve revocation IP address.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public async Task RevokeAsync(string rawToken, HttpContext? context = null)
+    {
+        var hashed = TokenHasher.Hash(rawToken);
+        var stored = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == hashed);
+
+        if (stored != null && !stored.IsRevoked)
         {
-            var hashed = TokenHasher.Hash(oldRawRefreshToken);
-
-            var stored = await _db.RefreshTokens
-                .FirstOrDefaultAsync(rt => rt.Token == hashed);
-
-            if (stored == null)
-                throw new SecurityTokenException("Refresh token not found.");
-            if (stored.ClientId != clientId)
-                throw new SecurityTokenException("Refresh token does not belong to this client.");
-            if (stored.IsRevoked)
-                throw new SecurityTokenException("Refresh token is revoked.");
-            if (stored.ExpiresAt < DateTime.UtcNow)
-                throw new SecurityTokenException("Refresh token is expired.");
-
-            // Revoke old refresh token
             stored.IsRevoked = true;
+            stored.RevokedAt = DateTime.UtcNow;
+            stored.RevokedByIp = context != null ? GetClientIp(context) ?? "unknown" : "unknown";
 
-            // Generate new refresh token
-            var newRawRefreshToken = Guid.NewGuid().ToString("N");
-            var newHashedRefreshToken = TokenHasher.Hash(newRawRefreshToken);
-
-            string? ipAddress = httpContext.Connection.RemoteIpAddress?.ToString();
-            if (httpContext.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
-            {
-                ipAddress = forwardedFor.FirstOrDefault();
-            }
-
-            var newRefreshToken = new RefreshToken
-            {
-                Token = newHashedRefreshToken,
-                ClientId = clientId,
-                CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(30),
-                CreatedFromIp = ipAddress,
-                DeviceInfo = httpContext.Request.Headers["User-Agent"].ToString()
-            };
-
-            await _db.RefreshTokens.AddAsync(newRefreshToken);
-
-            // Save revoked + new token changes
             await _db.SaveChangesAsync();
 
-            // Generate new access token
-            var newAccessToken = await _authenticator.CreateTokenAsync(clientId, DateTime.UtcNow.AddMinutes(10));
-
-            return new TokenResponse
-            {
-                AccessToken = newAccessToken,
-                RefreshToken = newRawRefreshToken
-            };
+            _logger.LogInformation(
+                "Revoked refresh token for clientId '{ClientId}' from IP '{IpAddress}'",
+                stored.ClientId,
+                stored.RevokedByIp
+            );
         }
-
-        public async Task RevokeAsync(string rawToken)
+        else
         {
-            var hashed = TokenHasher.Hash(rawToken);
-
-            var stored = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == hashed);
-            if (stored != null)
-            {
-                stored.IsRevoked = true;
-                await _db.SaveChangesAsync();
-            }
+            _logger.LogWarning(
+                "Attempted to revoke refresh token that does not exist or is already revoked."
+            );
         }
+    }
+
+    /// <summary>
+    /// Extracts the client IP address from the HTTP context, considering proxy headers.
+    /// </summary>
+    /// <param name="context">The HTTP context.</param>
+    /// <returns>The client IP address as a string, or null if not found.</returns>
+    private static string? GetClientIp(HttpContext context)
+    {
+        if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwarded))
+        {
+            var ips = forwarded.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries);
+            if (ips.Length > 0)
+                return ips[0].Trim();
+        }
+
+        return context.Connection.RemoteIpAddress?.ToString();
+    }
+
+    /// <summary>
+    /// Generates a cryptographically secure, URL-safe random token string.
+    /// </summary>
+    /// <param name="size">The number of random bytes to generate (default is 64).</param>
+    /// <returns>A URL-safe base64-encoded string.</returns>
+    private static string GenerateSecureToken(int size = 64)
+    {
+        var randomBytes = new byte[size];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        var base64 = Convert.ToBase64String(randomBytes);
+        return base64.Replace("+", "-").Replace("/", "_").TrimEnd('=');
     }
 }

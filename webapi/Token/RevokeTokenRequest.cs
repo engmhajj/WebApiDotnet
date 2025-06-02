@@ -1,15 +1,12 @@
-﻿namespace webapi.Token
+﻿namespace webapi.Token;
+
+/// <summary>
+/// Revoke token request model.
+/// </summary>
+public class RevokeTokenRequest
 {
     /// <summary>
-    /// Revoke token request model.
+    /// Refresh token string.
     /// </summary>
-    public class RevokeTokenRequest
-    {
-        /// <summary>
-        /// Refresh token string.
-        /// </summary>
-        public string RefreshToken { get; set; } = string.Empty;
-    }
-
-
+    public string RefreshToken { get; set; } = string.Empty;
 }

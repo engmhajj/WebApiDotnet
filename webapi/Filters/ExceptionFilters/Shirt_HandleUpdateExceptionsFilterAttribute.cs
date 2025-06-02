@@ -1,40 +1,40 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-
 using webapi.Data;
 
-namespace webapi.Filters.ExceptionFilters
+namespace webapi.Filters.ExceptionFilters;
+
+public class Shirt_HandleUpdateExceptionsFilterAttribute : ExceptionFilterAttribute
 {
-    public class Shirt_HandleUpdateExceptionsFilterAttribute : ExceptionFilterAttribute
+    private readonly ApplicationDbContext _db;
+
+    public Shirt_HandleUpdateExceptionsFilterAttribute(ApplicationDbContext db)
     {
-        private readonly ApplicationDbContext _db;
+        _db = db;
+    }
 
-        public Shirt_HandleUpdateExceptionsFilterAttribute(ApplicationDbContext db)
+    public override void OnException(ExceptionContext context)
+    {
+        base.OnException(context);
+
+        var routeId = context.RouteData.Values["id"]?.ToString();
+
+        if (int.TryParse(routeId, out int shirtId))
         {
-            _db = db;
-        }
+            var shirtStillExists = _db.Shirts.Any(s => s.ShirtId == shirtId);
 
-        public override void OnException(ExceptionContext context)
-        {
-            base.OnException(context);
-
-            var routeId = context.RouteData.Values["id"]?.ToString();
-
-            if (int.TryParse(routeId, out int shirtId))
+            if (!shirtStillExists)
             {
-                var shirtStillExists = _db.Shirts.Any(s => s.ShirtId == shirtId);
+                context.ModelState.AddModelError("ShirtId", "Shirt no longer exists.");
 
-                if (!shirtStillExists)
-                {
-                    context.ModelState.AddModelError("ShirtId", "Shirt no longer exists.");
-
-                    context.Result = new NotFoundObjectResult(new ValidationProblemDetails(context.ModelState)
+                context.Result = new NotFoundObjectResult(
+                    new ValidationProblemDetails(context.ModelState)
                     {
-                        Status = StatusCodes.Status404NotFound
-                    });
+                        Status = StatusCodes.Status404NotFound,
+                    }
+                );
 
-                    context.ExceptionHandled = true; // Mark exception as handled
-                }
+                context.ExceptionHandled = true; // Mark exception as handled
             }
         }
     }
