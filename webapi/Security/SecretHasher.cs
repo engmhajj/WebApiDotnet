@@ -4,16 +4,16 @@ namespace webapi.Security;
 
 public static class SecretHasher
 {
-    private const int SaltSize = 16; // 128-bit salt
-    private const int KeySize = 32; // 256-bit hash
-    private const int Iterations = 100_000; // Adjust as needed for security/performance
+    private const int SALTSIZE = 16; // 128-bit salt
+    private const int KEYSIZE = 32; // 256-bit hash
+    private const int ITERATIONS = 100_000; // Adjust as needed for security/performance
 
     /// <summary>
     /// Generates a salt and hashes the secret using PBKDF2.
     /// </summary>
     public static (string Salt, string Hash) HashSecret(string secret)
     {
-        var saltBytes = RandomNumberGenerator.GetBytes(SaltSize);
+        var saltBytes = RandomNumberGenerator.GetBytes(SALTSIZE);
         var salt = Convert.ToBase64String(saltBytes);
         var hash = HashWithPbkdf2(secret, saltBytes);
         return (salt, Convert.ToBase64String(hash));
@@ -40,9 +40,9 @@ public static class SecretHasher
         using var pbkdf2 = new Rfc2898DeriveBytes(
             secret,
             saltBytes,
-            Iterations,
+            ITERATIONS,
             HashAlgorithmName.SHA256
         );
-        return pbkdf2.GetBytes(KeySize);
+        return pbkdf2.GetBytes(KEYSIZE);
     }
 }

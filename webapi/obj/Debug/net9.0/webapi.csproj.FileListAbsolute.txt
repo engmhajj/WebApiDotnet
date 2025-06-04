@@ -345,3 +345,7 @@
 /Users/mohamadelhajhassan/code/work/dotnet-projects/webapi/bin/Debug/net9.0/tr-TR/Hangfire.Core.resources.dll
 /Users/mohamadelhajhassan/code/work/dotnet-projects/webapi/bin/Debug/net9.0/zh-TW/Hangfire.Core.resources.dll
 /Users/mohamadelhajhassan/code/work/dotnet-projects/webapi/bin/Debug/net9.0/zh/Hangfire.Core.resources.dll
+/Users/mohamadelhajhassan/code/work/dotnet-projects/webapi/bin/Debug/net9.0/MassTransit.dll
+/Users/mohamadelhajhassan/code/work/dotnet-projects/webapi/bin/Debug/net9.0/MassTransit.Abstractions.dll
+/Users/mohamadelhajhassan/code/work/dotnet-projects/webapi/bin/Debug/net9.0/MassTransit.RabbitMqTransport.dll
+/Users/mohamadelhajhassan/code/work/dotnet-projects/webapi/bin/Debug/net9.0/RabbitMQ.Client.dll

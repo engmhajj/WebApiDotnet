@@ -1,64 +1,47 @@
-﻿using System.Data.Entity;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using webapi.Data;
 using webapi.Models;
-using webapi.Security;
 
-namespace webapi.Authority;
-
-public class AppRepository
+namespace webapi.Authority
 {
-    private readonly ApplicationDbContext _db;
-
-    public AppRepository(ApplicationDbContext db)
+    public interface IAppRepository
     {
-        _db = db;
+        Task AddApplicationAsync(Application app);
+        Task<List<Application>> GetAllAsync();
+        Task<Application?> GetApplicationByClientIdAsync(string clientId);
     }
 
-    public async Task<Application?> GetApplicationByClientIdAsync(string clientId)
+    public class AppRepository : IAppRepository
     {
-        if (string.IsNullOrWhiteSpace(clientId))
-            return null;
+        private readonly ApplicationDbContext _db;
 
-        return await _db.Applications.FirstOrDefaultAsync(a => a.ClientId == clientId);
-    }
-
-    public async Task AddApplicationAsync(Application app)
-    {
-        _db.Applications.Add(app);
-        await _db.SaveChangesAsync();
-    }
-
-    public async Task<List<Application>> GetAllAsync()
-    {
-        return await _db.Applications.ToListAsync();
-    }
-
-    // Optional: dev/test fallback logic (for local testing only)
-    private static readonly List<Application> _fallbackApps;
-
-    static AppRepository()
-    {
-        const string demoSecret = "0673FC70-0514-4011-CCA3-DF9BC03201BC";
-        var (salt, hash) = SecretHasher.HashSecret(demoSecret);
-
-        _fallbackApps = new List<Application>
+        public AppRepository(ApplicationDbContext db)
         {
-            new Application
-            {
-                ApplicationId = 1,
-                ApplicationName = "MVCWebApp",
-                ClientId = "53D3C1E6-5487-8C6E-A8E4BD59940E",
-                SecretSalt = salt,
-                SecretHash = hash,
-                Scopes = "read,write,delete",
-            },
-        };
-    }
+            _db = db ?? throw new ArgumentNullException(nameof(db));
+        }
 
-    public static Application? GetFallbackApp(string clientId)
-    {
-        return _fallbackApps.FirstOrDefault(app =>
-            app.ClientId.Equals(clientId, StringComparison.OrdinalIgnoreCase)
-        );
+        public async Task<Application?> GetApplicationByClientIdAsync(string clientId)
+        {
+            if (string.IsNullOrWhiteSpace(clientId))
+                return null;
+
+            return await _db.Applications.FirstOrDefaultAsync(a => a.ClientId == clientId);
+        }
+
+        public async Task AddApplicationAsync(Application app)
+        {
+            if (app is null)
+                throw new ArgumentNullException(nameof(app));
+
+            _db.Applications.Add(app);
+            await _db.SaveChangesAsync();
+        }
+
+        public async Task<List<Application>> GetAllAsync()
+        {
+            return await _db.Applications.ToListAsync();
+        }
     }
 }

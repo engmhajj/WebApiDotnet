@@ -1,0 +1,8 @@
+﻿
+rabbitmq:
+  username: user
+  password: password
+  erlangCookie: secretcookie
+persistence:
+  enabled: true
+  size: 8Gi

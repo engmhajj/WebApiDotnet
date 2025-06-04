@@ -1,33 +1,42 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+﻿// (*^▽^*)══════════════════════════════════════════════════════════════════════════════════════════════════(^▽^*)
+// ❖          //Exposes authentication-related endpoints (issue, refresh, revoke) to clients          ❖
+// ❖                                            via HTTP.                                             ❖
+// (^▽^*)══════════════════════════════════════════════════════════════════════════════════════════════════(*^▽^*)
+// NOTE:❗Refactor Note:
+//Authenticator no longer manually updates token entities. Instead, it delegates revocation to RefreshTokenService.RevokeAsync(), ensuring all token state management is centralized.
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using webapi.Data;
 using webapi.Exceptions;
 using webapi.Models;
 using webapi.Security;
+using webapi.Services;
 using webapi.Token;
 
 namespace webapi.Authority;
 
 public class Authenticator : IAuthenticator
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IAppRepository _appRepository;
+    private readonly IFallbackAppProvider _fallbackAppProvider;
     private readonly ILogger<Authenticator> _logger;
     private readonly RefreshTokenService _refreshTokenService;
     private readonly JwtOptions _jwtOptions;
     private readonly SymmetricSecurityKey _signingKey;
 
     public Authenticator(
-        ApplicationDbContext db,
+        IAppRepository appRepository,
+        IFallbackAppProvider fallbackAppProvider,
         ILogger<Authenticator> logger,
         RefreshTokenService refreshTokenService,
         IOptions<JwtOptions> jwtOptions
     )
     {
-        _db = db ?? throw new ArgumentNullException(nameof(db));
+        _appRepository = appRepository ?? throw new ArgumentNullException(nameof(appRepository));
+        _fallbackAppProvider =
+            fallbackAppProvider ?? throw new ArgumentNullException(nameof(fallbackAppProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _refreshTokenService =
             refreshTokenService ?? throw new ArgumentNullException(nameof(refreshTokenService));
@@ -47,7 +56,10 @@ public class Authenticator : IAuthenticator
             return false;
         }
 
-        var app = await _db.Applications.FirstOrDefaultAsync(a => a.ClientId == clientId);
+        var app =
+            await _appRepository.GetApplicationByClientIdAsync(clientId)
+            ?? _fallbackAppProvider.GetFallbackApp(clientId);
+
         if (app is null)
         {
             _logger.LogWarning("Authentication failed: clientId '{ClientId}' not found.", clientId);
@@ -111,11 +123,11 @@ public class Authenticator : IAuthenticator
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    // Overload to simplify usage when only clientId and expiresAt are available
     public async Task<string> CreateTokenAsync(string clientId, DateTime expiresAt)
     {
         var app =
-            await _db.Applications.FirstOrDefaultAsync(a => a.ClientId == clientId)
+            await _appRepository.GetApplicationByClientIdAsync(clientId)
+            ?? _fallbackAppProvider.GetFallbackApp(clientId)
             ?? throw new ArgumentException("Invalid clientId", nameof(clientId));
         return await CreateTokenAsync(app, expiresAt);
     }
@@ -132,11 +144,8 @@ public class Authenticator : IAuthenticator
     public async Task<bool> ValidateRefreshTokenAsync(string refreshToken, string clientId)
     {
         var hashed = TokenHasher.Hash(refreshToken);
-        var token = await _db.RefreshTokens.FirstOrDefaultAsync(t =>
-            t.Token == hashed && !t.IsRevoked && t.ClientId == clientId && !t.IsExpired()
-        );
-
-        return token is not null;
+        var token = await _refreshTokenService.GetRefreshTokenAsync(hashed, clientId);
+        return token != null && !token.IsRevoked && !token.IsExpired();
     }
 
     public async Task<bool> RevokeRefreshTokenAsync(
@@ -144,20 +153,8 @@ public class Authenticator : IAuthenticator
         HttpContext? context = null
     )
     {
-        var hashed = TokenHasher.Hash(refreshToken);
-        var token = await _db.RefreshTokens.FirstOrDefaultAsync(t => t.Token == hashed);
-        if (token is null)
-            return false;
-
-        token.IsRevoked = true;
-        token.RevokedAt = DateTime.UtcNow;
-        token.RevokedByIp = context?.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        await _db.SaveChangesAsync();
-        _logger.LogInformation(
-            "Refresh token revoked for clientId '{ClientId}' from IP '{IpAddress}'",
-            token.ClientId,
-            token.RevokedByIp
-        );
+        await _refreshTokenService.RevokeAsync(refreshToken, context);
+        // Assuming RevokeAsync handles logging and checking internally
         return true;
     }
 
@@ -168,11 +165,9 @@ public class Authenticator : IAuthenticator
     )
     {
         var hashed = TokenHasher.Hash(refreshToken);
-        var storedToken = await _db.RefreshTokens.FirstOrDefaultAsync(t =>
-            t.Token == hashed && !t.IsRevoked && t.ClientId == clientId && !t.IsExpired()
-        );
+        var storedToken = await _refreshTokenService.GetRefreshTokenAsync(hashed, clientId);
 
-        if (storedToken is null)
+        if (storedToken == null || storedToken.IsRevoked || storedToken.IsExpired())
         {
             _logger.LogWarning(
                 "Invalid or expired refresh token for clientId {ClientId}",
@@ -181,14 +176,15 @@ public class Authenticator : IAuthenticator
             throw new InvalidRefreshTokenException("Invalid or expired refresh token.");
         }
 
-        // Revoke old token with audit info
+        // Revoke old token
         storedToken.IsRevoked = true;
         storedToken.RevokedAt = DateTime.UtcNow;
         storedToken.RevokedByIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        await _db.SaveChangesAsync();
+        await _refreshTokenService.SaveChangesAsync();
 
         var app =
-            await _db.Applications.FirstOrDefaultAsync(a => a.ClientId == clientId)
+            await _appRepository.GetApplicationByClientIdAsync(clientId)
+            ?? _fallbackAppProvider.GetFallbackApp(clientId)
             ?? throw new ArgumentException("Invalid clientId", nameof(clientId));
 
         var accessExpires = DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenExpiryMinutes);
@@ -225,44 +221,40 @@ public class Authenticator : IAuthenticator
 
         var keyBytes = Encoding.UTF8.GetBytes(overrideSecretKey ?? _jwtOptions.SecretKey);
         var key = new SymmetricSecurityKey(keyBytes);
+
         var tokenHandler = new JwtSecurityTokenHandler();
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = _jwtOptions.Issuer,
+            ValidateAudience = true,
+            ValidAudience = _jwtOptions.Audience,
+            ValidateLifetime = true,
+            IssuerSigningKey = key,
+            ValidateIssuerSigningKey = true,
+            ClockSkew = TimeSpan.Zero,
+        };
 
         try
         {
             var principal = tokenHandler.ValidateToken(
                 token,
-                new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = key,
-                    ValidateLifetime = true,
-                    ClockSkew = TimeSpan.Zero,
-                    ValidateIssuer = !string.IsNullOrEmpty(_jwtOptions.Issuer),
-                    ValidIssuer = _jwtOptions.Issuer,
-                    ValidateAudience = !string.IsNullOrEmpty(_jwtOptions.Audience),
-                    ValidAudience = _jwtOptions.Audience,
-                },
-                out _
+                validationParameters,
+                out var validatedToken
             );
-
             return principal.Claims;
         }
-        catch (Exception ex)
+        catch (SecurityTokenException ex)
         {
             _logger.LogWarning(ex, "Token validation failed.");
             return null;
         }
     }
 
-    public IEnumerable<Claim> ReadClaims(string token)
+    private static string RemoveBearerPrefix(string token)
     {
-        token = RemoveBearerPrefix(token);
-        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
-        return jwt.Claims;
+        if (token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            return token.Substring("Bearer ".Length).Trim();
+        return token;
     }
-
-    private static string RemoveBearerPrefix(string token) =>
-        token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
-            ? token["Bearer ".Length..].Trim()
-            : token;
 }

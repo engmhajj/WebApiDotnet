@@ -37,11 +37,10 @@ public interface IAuthenticator
     /// </summary>
     public IEnumerable<Claim>? VerifyToken(string token, string? secretKey = null);
 
-    /// <summary>
-    /// Read claims from a JWT without validating.
-    /// </summary>
-    public IEnumerable<Claim> ReadClaims(string token);
-
+    /// /// <summary>
+    /// /// Read claims from a JWT without validating.
+    /// /// </summary>
+    /// public IEnumerable<Claim> ReadClaims(string token);
     // Add this:
     public Task<TokenResponse> RefreshAccessTokenAsync(
         string refreshToken,

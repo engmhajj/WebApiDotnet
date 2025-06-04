@@ -29,11 +29,7 @@
             Verify a JWT token and get claims.
             </summary>
         </member>
-        <member name="M:webapi.Authority.IAuthenticator.ReadClaims(System.String)">
-            <summary>
-            Read claims from a JWT without validating.
-            </summary>
-        </member>
+        <!-- Badly formed XML comment ignored for member "M:webapi.Authority.IAuthenticator.RefreshAccessTokenAsync(System.String,System.String,Microsoft.AspNetCore.Http.HttpContext)" -->
         <member name="T:webapi.Migrations.update2">
             <inheritdoc />
         </member>
@@ -44,6 +40,18 @@
             <inheritdoc />
         </member>
         <member name="M:webapi.Migrations.update2.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:webapi.Migrations.update3">
+            <inheritdoc />
+        </member>
+        <member name="M:webapi.Migrations.update3.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:webapi.Migrations.update3.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:webapi.Migrations.update3.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
         <member name="T:webapi.Models.AppCredential">
@@ -155,37 +163,6 @@
             <summary>
             Checks if an email exists.
             </summary>
-        </member>
-        <member name="M:RefreshTokenService.CreateRefreshTokenAsync(System.String,System.DateTime,Microsoft.AspNetCore.Http.HttpContext)">
-            <summary>
-            Creates a new refresh token for the specified client, stores its hashed value, and returns the plain token.
-            </summary>
-            <param name="clientId">The client identifier.</param>
-            <param name="expiresAt">The expiration date/time of the token.</param>
-            <param name="context">The current HTTP context, used to retrieve client IP and device info.</param>
-            <returns>The plain refresh token string to be sent to the client.</returns>
-        </member>
-        <member name="M:RefreshTokenService.RevokeAsync(System.String,Microsoft.AspNetCore.Http.HttpContext)">
-            <summary>
-            Revokes the specified refresh token, marking it revoked and storing revocation audit info if available.
-            </summary>
-            <param name="rawToken">The plain refresh token to revoke.</param>
-            <param name="context">Optional HTTP context to retrieve revocation IP address.</param>
-            <returns>A task representing the asynchronous operation.</returns>
-        </member>
-        <member name="M:RefreshTokenService.GetClientIp(Microsoft.AspNetCore.Http.HttpContext)">
-            <summary>
-            Extracts the client IP address from the HTTP context, considering proxy headers.
-            </summary>
-            <param name="context">The HTTP context.</param>
-            <returns>The client IP address as a string, or null if not found.</returns>
-        </member>
-        <member name="M:RefreshTokenService.GenerateSecureToken(System.Int32)">
-            <summary>
-            Generates a cryptographically secure, URL-safe random token string.
-            </summary>
-            <param name="size">The number of random bytes to generate (default is 64).</param>
-            <returns>A URL-safe base64-encoded string.</returns>
         </member>
     </members>
 </doc>

@@ -2,12 +2,8 @@
 using AspNetCoreRateLimit;
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using Hangfire;
-using Hangfire.SQLite;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection; // For AddHealthChecks
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 using Prometheus;
 using Serilog;
@@ -16,7 +12,6 @@ using webapi.Data;
 using webapi.Data.Seeding;
 using webapi.Filters;
 using webapi.Filters.OperationFilter;
-using webapi.Interfaces;
 using webapi.Middlewares;
 using webapi.Models;
 using webapi.Services;
@@ -64,6 +59,7 @@ builder
 //         new QueryStringApiVersionReader("api-version"),
 //         new HeaderApiVersionReader("X-Version"),
 //         new MediaTypeApiVersionReader("ver")
+
 //     );
 // });
 
@@ -78,11 +74,13 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("JwtOptions"));
 builder.Services.Configure<AppCredential>(builder.Configuration.GetSection("AppCredential"));
 
+builder.Services.AddScoped<IAppRepository, AppRepository>();
+builder.Services.AddSingleton<IFallbackAppProvider, FallbackAppProvider>();
+
 builder.Services.AddScoped<IAuthenticator, Authenticator>();
 builder.Services.AddScoped<RefreshTokenService>();
 builder.Services.AddScoped<ApplicationService>();
 builder.Services.AddScoped<UserRepository>();
-builder.Services.AddScoped<AppRepository>();
 
 builder.Services.AddScoped<UserService>();
 builder.Services.AddSingleton<JwtService>();
@@ -199,8 +197,8 @@ builder.Services.AddStackExchangeRedisCache(options =>
 // (*^▽^*)════════════════════════════════════════════════(^▽^*)
 // ❖          // Added for Testing purpose          ❖
 // (^▽^*)════════════════════════════════════════════════(*^▽^*)
-builder.Services.AddScoped<IBackgroundJobWrapper, BackgroundJobWrapper>();
-builder.Services.AddScoped<IBackgroundJobService, BackgroundJobService>();
+// builder.Services.AddScoped<IBackgroundJobWrapper, BackgroundJobWrapper>();
+// builder.Services.AddScoped<IBackgroundJobService, BackgroundJobService>();
 
 // (*^▽^*)══════════════════════════════════════════════════════════════(^▽^*)
 // ❖          //2- Adding Health check and monitor service          ❖
@@ -224,20 +222,65 @@ builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection(
 builder.Services.AddInMemoryRateLimiting();
 builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
 
+// (*^▽^*)══════════════════════════════════════════════════════════════(^▽^*)
+// ❖     ✅ Best Queuing Solution: RabbitMQ with MassTransit     ❖
+// (^▽^*)══════════════════════════════════════════════════════════════(*^▽^*)
+
+// builder.Services.AddMassTransit(x =>
+// {
+//     x.AddConsumer<PaymentConsumer>();
+//
+//     x.UsingRabbitMq(
+//         (context, cfg) =>
+//         {
+//             cfg.Host(
+//                 "rabbitmq",
+//                 h =>
+//                 {
+//                     h.Username("guest");
+//                     h.Password("guest");
+//                 }
+//             );
+//
+//             cfg.ReceiveEndpoint(
+//                 "payment-queue",
+//                 e =>
+//                 {
+//                     e.ConfigureConsumer<PaymentConsumer>(context);
+//                 }
+//             );
+//         }
+//     );
+// });
+
 // (*^▽^*)═══════════════════════════════════════════════════════════════(^▽^*)
-// ❖          //4. Background Jobs / Queues with Hangfire          ❖
+// ❖          //4. Background Jobs / Queues with Hangfire - Adding queuing serice, benefit queue
+// persist, bad queue need to call db which is slower          ❖
 // (^▽^*)═══════════════════════════════════════════════════════════════(*^▽^*)
+// 🆚 Why Not Hangfire?
+// Hangfire stores jobs in DB, which can be slower for high-volume, critical tasks.
+//
+// It’s not naturally distributed—multiple instances can fight over jobs.
+//
+// It’s great for simple background jobs, but not robust for mission-critical queues like payments in a growing system.
+// builder.Services.AddHangfire(config =>
+//     config
+//         .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
+//         .UseSimpleAssemblyNameTypeSerializer()
+//         .UseRecommendedSerializerSettings()
+//         .UseSQLiteStorage("Data Source=hangfire.db;")
+// );
+//
+// builder.Services.AddHangfireServer();
 
-builder.Services.AddHangfire(config =>
-    config
-        .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
-        .UseSimpleAssemblyNameTypeSerializer()
-        .UseRecommendedSerializerSettings()
-        .UseSQLiteStorage("Data Source=hangfire.db;")
-);
-
-builder.Services.AddHangfireServer();
-
+// (*^▽^*)═══════════════════════════════════════════════════════════════════════(^▽^*)
+// ❖     Another queuing service designed by me we can remove hangfire but use in memory on restart
+// all data will be lost ❖
+// (^▽^*)═══════════════════════════════════════════════════════════════════════(*^▽^*)
+//
+// builder.Services.AddSingleton<ITaskQueue, BackgroundTaskQueue>();
+// builder.Services.AddHostedService<QueuedHostedService>();
+//
 // (*^▽^*)═════════════════════════════════════════════════════════════════════════════(^▽^*)
 // ❖          // -------------------- Build App -------------------- //          ❖
 // (^▽^*)═════════════════════════════════════════════════════════════════════════════(*^▽^*)
@@ -246,16 +289,19 @@ var app = builder.Build();
 
 app.MapHealthChecks("/health");
 app.UseRouting();
-app.UseEndpoints(endpoints =>
-{
-    endpoints.MapHangfireDashboard("/hangfire");
-    endpoints.MapControllers();
-});
+
+// app.UseEndpoints(endpoints =>
+// {
+//     endpoints.MapHangfireDashboard("/hangfire");
+//     endpoints.MapControllers();
+// });
 app.UseHttpMetrics(); // Collect HTTP metrics for Prometheus
 
 app.UseIpRateLimiting();
-app.UseHangfireDashboard("/hangfire"); // optional dashboard UI at /hangfire
 
+// app.UseHangfireDashboard("/hangfire"); // optional dashboard UI at /hangfire
+
+app.UseAuthorization();
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapHealthChecks("/health");
@@ -314,7 +360,6 @@ if (app.Environment.IsDevelopment())
     {
         c.DocumentTitle = "Auth API Documentation";
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Auth API V1");
-
     });
 }
 else
@@ -325,6 +370,5 @@ else
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
-app.UseAuthorization();
 app.MapControllers();
 app.Run();

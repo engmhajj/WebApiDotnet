@@ -1,23 +1,27 @@
-﻿version: '3.8'
+﻿
+version: '3.8'
 
 services:
-  web:
-    build: .
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    restart: always
     ports:
-      - "80:80"
-    depends_on:
-      - redis
-      - hangfire
-
-  redis:
-    image: "redis:alpine"
-    ports:
-      - "6379:6379"
-
-  hangfire:
-    image: "mcr.microsoft.com/mssql/server:2022-latest"
+      - "4369:4369" # epmd - peer discovery service
+      - "5671:5671" # TLS AMQP 0-9-1 and AMQP 1.0 clients
+      - "5672:5672" # Plain AMQP 0-9-1 and AMQP 1.0 clients
+      - "443:15671" # management HTTPS port
+      - "80:15672" # management HTTP port
+      - "25672:25672" # used for inter-node and CLI tools communication (Erlang distribution server port)
+      - "15691:15691" # prometheus metrics HTTPS port
+      - "15692:15692" # prometheus metrics HTTP port
     environment:
-      - ACCEPT_EULA=Y
-      - SA_PASSWORD=Your_password123
-    ports:
-      - "1433:1433"
+      - RABBITMQ_ERLANG_COOKIE=${CLUSTER_COOKIE}
+      - RABBITMQ_DEFAULT_USER=${DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${DEFAULT_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+volumes:
+  rabbitmq-data:
+    driver: local

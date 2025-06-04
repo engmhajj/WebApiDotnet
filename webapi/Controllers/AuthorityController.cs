@@ -1,4 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿// (*^▽^*)══════════════════════════════════════════════════════════════════════════════════════════════════(^▽^*)
+// ❖          // Authenticator Handles authentication logic: validating credentials, issuing          ❖
+// ❖                                         JWTs, verifying                                          ❖
+// ❖                        // access tokens, and coordinating refresh logic.                         ❖
+// ** Purpose:
+//Exposes HTTP endpoints for:
+//Token issuance
+//Token refresh
+//Token revocation
+// (^▽^*)══════════════════════════════════════════════════════════════════════════════════════════════════(*^▽^*)
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Swashbuckle.AspNetCore.Annotations;
@@ -15,19 +25,16 @@ public class AuthorityController : ControllerBase
     private readonly ILogger<AuthorityController> _logger;
     private readonly IAuthenticator _authenticator;
     private readonly JwtOptions _jwtOptions;
-    private readonly AppRepository _appRepository;
 
     public AuthorityController(
         ILogger<AuthorityController> logger,
         IAuthenticator authenticator,
-        IOptions<JwtOptions> jwtOptions,
-        AppRepository appRepository
+        IOptions<JwtOptions> jwtOptions
     )
     {
         _logger = logger;
         _authenticator = authenticator;
         _jwtOptions = jwtOptions?.Value ?? throw new ArgumentNullException(nameof(jwtOptions));
-        _appRepository = appRepository;
     }
 
     [HttpPost]
@@ -102,7 +109,10 @@ public class AuthorityController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var revoked = await _authenticator.RevokeRefreshTokenAsync(request.RefreshToken);
+        var revoked = await _authenticator.RevokeRefreshTokenAsync(
+            request.RefreshToken,
+            HttpContext
+        );
         if (!revoked)
             return BadRequest(new { message = "Refresh token not found or already revoked." });
 
